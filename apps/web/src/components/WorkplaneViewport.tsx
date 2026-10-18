@@ -5514,6 +5514,11 @@ export function WorkplaneViewport({
     if (!canvas || !WheelEventConstructor) {
       return;
     }
+    // A size box that has been clicked into takes the wheel itself, as every number field does.
+    const target = event.target;
+    if (target instanceof HTMLInputElement && target.ownerDocument.activeElement === target) {
+      return;
+    }
 
     event.preventDefault();
     event.stopPropagation();
