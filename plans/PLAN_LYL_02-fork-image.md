@@ -1,7 +1,10 @@
 # PLAN_LYL_02 — Run the fork on Adrian's server
 
-**Status (2026-10-18):** being built (Adrian: "yes", 2026-10-18). Step 1 done: `docker-my-mod.yml`. Asked for so the
-SpaceMouse (PLAN_LYL_01) works at his own HTTPS address too.
+**Status (2026-10-18):** **built and running.** `docker-my-mod.yml` built and published
+`ghcr.io/quadcom/layerling:my-mod` (run 39145250295, success). The package was public from the start (an anonymous
+pull works), so step 2 needed nothing. The server's stack now runs that image, built from `my-mod` commit
+`d1aa6549`; Layerling started cleanly and its HTTPS address answers. **Not tested by Adrian yet** at his address:
+the SpaceMouse there, the flat (O) view and Chrome (he tests them himself).
 
 ## Goal
 
