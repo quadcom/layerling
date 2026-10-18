@@ -4449,6 +4449,7 @@ export function WorkplaneViewport({
       camera: () => state.camera,
       target: () => state.controls.target,
       locked: () => viewLockedRef.current,
+      squareView: (face) => setViewCubeFace(face),
       zoomRange: () => ({ min: state.controls.minZoom, max: state.controls.maxZoom }),
       minDistance: () => state.controls.minDistance,
       modelBox: () => {

@@ -222,7 +222,7 @@ describe("the 3D view's model", () => {
     expect(camera.position.z).toBeGreaterThan(0);
     expect(forward.z).toBeLessThan(0);
     expect(camera.position.y).toBeCloseTo(300, 0);
-    expect(target.toArray().map((value) => Math.round(value))).toEqual([0, 0, 0]);
+    expect(target.toArray().map((value) => Math.round(value) + 0)).toEqual([0, 0, 0]);
     const up = new THREE.Vector3(0, 1, 0).applyQuaternion(camera.quaternion);
     expect(up.z).toBeLessThan(0);
   });
@@ -231,7 +231,7 @@ describe("the 3D view's model", () => {
     const { model, camera, target, host } = cameraHost();
     let locked = true;
     host.locked = () => locked;
-    expect(model.read("view.rotatable")).toBe(false);
+    expect(model.read("view.rotatable")).toBe(true);
     // Turned 30 degrees about the target and moved 10 to the camera's right: only the move is kept.
     const turn = new THREE.Matrix4().makeRotationY(THREE.MathUtils.degToRad(30));
     const turned = new THREE.Matrix4().makeTranslation(0, 0, 300).premultiply(turn).multiply(new THREE.Matrix4().makeTranslation(10, 0, 0));
@@ -257,6 +257,37 @@ describe("the 3D view's model", () => {
     model.write("view.affine", new THREE.Matrix4().compose(new THREE.Vector3(5, 300, 0), before, new THREE.Vector3(1, 1, 1)).toArray());
     expect(camera.quaternion.angleTo(before)).toBeCloseTo(0, 6);
     expect(camera.position.toArray().map((value) => Math.round(value))).toEqual([5, 300, 0]);
+  });
+
+  it("turns a twist near straight down into a spin round the vertical, not a swing over the top", () => {
+    const { model, camera } = cameraHost();
+    // Looking down 2 degrees off straight down, then twisted 5 degrees about the screen's up, as the cap does.
+    const down = new THREE.Matrix4().makeRotationX(-THREE.MathUtils.degToRad(88));
+    model.write("view.affine", new THREE.Matrix4().makeTranslation(0, 0, 300).premultiply(down).toArray());
+    const up = new THREE.Vector3(0, 1, 0).applyQuaternion(camera.quaternion);
+    const twist = new THREE.Quaternion().setFromAxisAngle(up, THREE.MathUtils.degToRad(5));
+    const twisted = camera.quaternion.clone().premultiply(twist);
+    const at = camera.position.clone().applyQuaternion(twist);
+    model.write("view.affine", new THREE.Matrix4().compose(at, twisted, new THREE.Vector3(1, 1, 1)).toArray());
+    const forward = camera.getWorldDirection(new THREE.Vector3());
+    // Still 2 degrees off straight down, and the heading turned by the 5 degrees of the twist, not by 68.
+    expect(THREE.MathUtils.radToDeg(Math.acos(-forward.y))).toBeCloseTo(2, 4);
+    expect(THREE.MathUtils.radToDeg(Math.atan2(-forward.x, -forward.z))).toBeCloseTo(5, 4);
+    expect(new THREE.Vector3(1, 0, 0).applyQuaternion(camera.quaternion).y).toBeCloseTo(0, 6);
+  });
+
+  it("takes 3DxWare's own Top, Front, Right... buttons as the view buttons of that side", () => {
+    const { model, camera, host } = cameraHost();
+    const faces: string[] = [];
+    host.squareView = (face) => { faces.push(face); };
+    const top = new THREE.Matrix4().makeRotationX(-Math.PI / 2).setPosition(0, 300, 0);
+    model.write("view.affine", top.toArray());
+    expect(faces).toEqual(["top"]);
+    expect(camera.position.toArray()).toEqual([0, 0, 300]);
+    // A pan in a view that is already square is only a pan.
+    model.write("view.affine", [1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1, 0, 5, 0, 300, 1]);
+    expect(faces).toEqual(["top"]);
+    expect(camera.position.x).toBeCloseTo(5);
   });
 
   it("stops a tilt at straight up too", () => {

@@ -222,3 +222,19 @@ its PR goes up after (or stacked on) the SpaceMouse PR.
   Firefox: mouse orbit locked after Top/Front, Esc and badge unlock, cap pans/zooms but doesn't turn while locked.
 - Open: Esc unlocks before it puts down a tool or leaves a mode (tape, section, workplane); say if that is wrong.
   No guide page or shortcuts-list entry yet.
+
+### Adrian's try of the lock (2026-10-18): lock works; three findings
+
+1. **3DxWare's own Top/Right/Front buttons** moved the view but did not lock it (his remapped buttons to
+   Layerling's view commands did). Now: a camera 3DxWare sets exactly square to a side, from a view that was not
+   already that side, is taken as Layerling's view button for that side (`squareView`), so it locks too.
+2. **The orbit fix did not work.** The flip near straight down was not the camera passing over the top: there a
+   twist moves the line of sight sideways across the top, and turning "up" back to the top made that a big swing
+   of the heading, frame by frame. Now (`mouseLikeTurn` in `navlibCamera.ts`) the cap turns the view as the mouse
+   does: the twist spins round the vertical, the tilt changes the angle and stops just short of straight down or
+   up, roll is dropped; 3DxWare's pan and zoom are kept as they were on the screen. A test shows the old code
+   drifting off; the new one holds. This replaces the `orbit-fix` commit's approach; the SpaceMouse PR should
+   carry the new code.
+3. **Zoom stops short in a locked view.** Cause not proven. Tried: 3DxWare is no longer told the view can't turn
+   (`view.rotatable` stays true; the lock takes the turn back itself). Asked Adrian whether it was the cap or the
+   wheel, and whether it still happens.
