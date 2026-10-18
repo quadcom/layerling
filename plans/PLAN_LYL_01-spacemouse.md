@@ -9,7 +9,7 @@ except `useRememberedFlag.test.ts`, which fails the same way on the untouched co
 - Running the fork on Adrian's own server: it runs the upstream image; an image built from `my-mod` is needed
   (Adrian, 2026-10-18: yes, plan it — next plan).
 - Upstream PR to henmedia/layerling — Adrian's call.
-- Not tried: the flat (O) view and the sketch with the cap; a Chrome page served from the LAN (Chrome may ask for
+- Not tried (Adrian will test the flat view and Chrome himself): the flat (O) view and the sketch with the cap; a Chrome page served from the LAN (Chrome may ask for
   "local network access" before it lets the page reach 127.51.68.120).
 - Known limits: roll is dropped (the view keeps up at the top); labels with a number ("Show 3 hidden") refresh
   only on a mode or language change; no command icons sent to 3DxWare; no guide page.
