@@ -1,6 +1,26 @@
 # PLAN_LYL_03 — Lock a drag to one axis with the X, Y and Z keys
 
-**Status (2026-10-18):** **building** on branch `axis-lock` (Adrian: "Build 3 and 4, seperate branches").
+**Status (2026-10-18):** **built and tested on branch `axis-lock`**, cut from `main` (upstream 1.91.0); 3 commits,
+not merged into `my-mod`, not pushed. Type check clean; unit tests pass (8 new in `tests/unit/axisLock.test.ts`)
+apart from the known `useRememberedFlag` failure under Node 26. Tried in headless Chromium on the dev server:
+sketch line with X (level, 0°) and Y (upright), dashed guide and badge, lock gone after the click, Z ignored in
+the sketch; tape measure from a plate point with Z (straight up, 50 mm), switch to X, X again frees, lock gone
+after the click; a tape end dragged with Z (straight up, lock gone on release); a box dragged diagonally with X
+moves along X only.
+
+**Not done / open:**
+- Adrian to try it himself, mostly the tape measure on a real part (corner to plate) and in Firefox.
+- Merge into `my-mod` - Adrian's OK (see "Both plans together" below).
+- Upstream PR to henmedia/layerling - Adrian's call. The branch is PR-ready: no plan file, English text in every
+  language file (upstream may want translations), What's New in `docs/whatsNew-unreleased.json`.
+- Reference points (the tape's own markers) do not catch while a lock is on; corners, edges and tape points do.
+- The lock line is drawn with the thick-line type (`LineSegments2`): a plain `THREE.Line` drew nothing in the
+  headless test browser.
+
+**Both plans together:** `axis-lock` and `wheel-steps` both change `SketchWorkspace.tsx`, the sketch guide page and
+`docs/whatsNew-unreleased.json`, so merging the second one will stop on conflicts there (a trial merge, 2026-10-18).
+Both are built on upstream 1.91.0 while `my-mod` is on 1.89.0 with the SpaceMouse work, so merging either into
+`my-mod` also brings the upstream update in. `npm install` is needed after (1.91 adds `qrcode-generator`).
 
 ## Goal
 
@@ -80,4 +100,4 @@ and selections.
 6. Type check, unit tests, then try it in the dev server (headless Chromium for the 3D view) and hand it to
    Adrian to try.
 
-Branch `axis-lock` cut from `my-mod`, merged into `my-mod` on Adrian's OK.
+Branch `axis-lock` cut from `main` (Adrian, 2026-10-18: feature branches come from `main` so each can go upstream as a PR), merged into `my-mod` on Adrian's OK.
