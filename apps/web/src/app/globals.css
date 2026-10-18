@@ -11824,6 +11824,24 @@ html[data-theme="dark"] .shape-inspector .name-tag-start .name-tag-start-button:
   font: inherit;
 }
 
+.workspace-wheel-step {
+  grid-template-columns: minmax(0, 1fr) 120px;
+}
+
+.workspace-wheel-step small {
+  font-weight: 600;
+}
+
+.workspace-wheel-step-value {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.workspace-wheel-step-value input {
+  width: 100%;
+}
+
 .workspace-history-note {
   margin: 2px 0 0;
   color: #756656;

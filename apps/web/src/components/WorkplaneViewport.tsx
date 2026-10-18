@@ -69,7 +69,7 @@ import { createSpringGeometry } from "@/lib/springGeometry";
 import { textDisplayGeometry } from "@/lib/textFill";
 import { pinchWheelDelta, wheelZoomDelta } from "@/lib/wheelZoom";
 import { useWheelField } from "@/lib/useWheelField";
-import { wheelBaseStep, wheelNextValue } from "@/lib/wheelValueStep";
+import { currentWheelSettings, lengthFieldWheelStep, wheelBaseStep, wheelNextValue, wheelNudgeAfterTurn, wheelTurn } from "@/lib/wheelValueStep";
 import { createLatestRunner, type LatestRunner } from "@/lib/latestRunner";
 import { manifoldRevision, onManifoldReady } from "@/lib/manifoldHandle";
 import { customFontRevision, onCustomFontsChanged } from "@/lib/textFonts";
@@ -3271,7 +3271,7 @@ export function WorkplaneViewport({
     const display = workspaceRef.current;
     const parsed = parseMeasurementInput(sectionOffsetDraftRef.current ?? "");
     const current = Number.isFinite(parsed) ? parsed : millimetersToDisplay(sign * settings.offset, display);
-    const base = wheelBaseStep(millimetersToDisplay(bounds.min, display), millimetersToDisplay(bounds.max, display), 0, lengthDisplayUnit(display).label === "in");
+    const base = lengthFieldWheelStep(wheelBaseStep(millimetersToDisplay(bounds.min, display), millimetersToDisplay(bounds.max, display), 0, lengthDisplayUnit(display).label === "in"));
     const next = wheelNextValue(current, direction, base, keys);
     const shown = String(Math.round(next * 1000) / 1000 || 0);
     sectionOffsetDraftRef.current = shown;
@@ -9121,6 +9121,7 @@ export function WorkplaneViewport({
               value={rulerDimensionEditing.value}
               autoFocus
               inputMode="decimal"
+              data-wheel-step="length"
               onPointerDown={(event) => event.stopPropagation()}
               onFocus={(event) => event.currentTarget.select()}
               onChange={(event) => setRulerDimensionEditing((edit) => edit && { ...edit, value: event.target.value })}
@@ -9138,6 +9139,7 @@ export function WorkplaneViewport({
               value={rulerDuplicateEditing.value}
               autoFocus
               inputMode="decimal"
+              data-wheel-step="length"
               onPointerDown={(event) => event.stopPropagation()}
               onFocus={(event) => event.currentTarget.select()}
               onChange={(event) => setRulerDuplicateEditing((edit) => edit && { ...edit, value: event.target.value })}
@@ -9155,6 +9157,7 @@ export function WorkplaneViewport({
               value={rulerCoordinateEditing.value}
               autoFocus
               inputMode="decimal"
+              data-wheel-step="length"
               onPointerDown={(event) => event.stopPropagation()}
               onFocus={(event) => event.currentTarget.select()}
               onChange={(event) => setRulerCoordinateEditing((edit) => edit && { ...edit, value: event.target.value })}

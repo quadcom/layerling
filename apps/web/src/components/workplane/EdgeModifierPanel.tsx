@@ -12,7 +12,7 @@ import { useLanguage } from "@/lib/useLanguage";
 import type { WorkplaneWorkspaceSettings } from "@/types/layerling";
 import { selectWholeValue } from "@/lib/numberField";
 import { useWheelField } from "@/lib/useWheelField";
-import { wheelBaseStep, wheelNextValue } from "@/lib/wheelValueStep";
+import { lengthFieldWheelStep, wheelBaseStep, wheelNextValue } from "@/lib/wheelValueStep";
 
 const MIN_EDGE_MODIFIER_AMOUNT = 0.001;
 const EDGE_MODIFIER_AMOUNT_STEP = 0.001;
@@ -192,7 +192,8 @@ export function EdgeModifierSlider({
   useWheelField(numberInputRef, editing && !disabled, ({ direction, keys }) => {
     const parsed = parseMeasurementInput(draft);
     const current = Number.isFinite(parsed) ? parsed : controlValue;
-    const next = clamp(wheelNextValue(current, direction, wheelBaseStep(controlMin, controlMax, controlStep, length && unitLabel === "in"), keys), controlMin, controlMax);
+    const autoStep = wheelBaseStep(controlMin, controlMax, controlStep, length && unitLabel === "in");
+    const next = clamp(wheelNextValue(current, direction, length ? lengthFieldWheelStep(autoStep) : autoStep, keys), controlMin, controlMax);
     const shown = formatSliderValue(next, workspace.accuracy, controlStep);
     wheelShownRef.current = shown;
     setDraft(shown);

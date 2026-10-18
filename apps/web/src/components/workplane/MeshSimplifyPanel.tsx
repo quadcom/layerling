@@ -380,6 +380,7 @@ export function MeshSimplifyPanel({
           <input
             type="text"
             inputMode="numeric"
+            data-wheel-step="100"
             aria-label={t("simplify.targetTriangles")}
             value={targetDraft ?? String(target)}
             onChange={(event) => setTargetDraft(event.currentTarget.value)}

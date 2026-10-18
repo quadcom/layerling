@@ -223,6 +223,7 @@ export function TransformOverlay({
           value={editingDimension.value}
           autoFocus
           inputMode="decimal"
+          data-wheel-step="length"
           onPointerDown={(event) => event.stopPropagation()}
           onFocus={(event) => selectWholeValue(event.currentTarget)}
           onChange={(event) => onEditingDimensionChange(event.target.value)}
@@ -250,6 +251,7 @@ export function TransformOverlay({
           value={entry.value}
           autoFocus={index === 0}
           inputMode="text"
+          data-wheel-step="length"
           aria-label={entry.axis === "width" ? t("transform.cornerWidth") : t("transform.cornerDepth")}
           onPointerDown={(event) => event.stopPropagation()}
           onFocus={(event) => selectWholeValue(event.currentTarget)}

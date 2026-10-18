@@ -63,6 +63,7 @@ export function MoveDimensionOverlay({
               value={editing.value}
               autoFocus
               inputMode="decimal"
+              data-wheel-step="length"
               spellCheck={false}
               style={styleForLine(line)}
               onFocus={(event) => selectWholeValue(event.currentTarget)}

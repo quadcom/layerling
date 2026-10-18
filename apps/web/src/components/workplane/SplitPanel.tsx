@@ -3,7 +3,7 @@
 import { Check, LoaderCircle, MousePointerClick, X } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
 import { useWheelField } from "@/lib/useWheelField";
-import { wheelBaseStep, wheelNextValue } from "@/lib/wheelValueStep";
+import { lengthFieldWheelStep, wheelBaseStep, wheelNextValue } from "@/lib/wheelValueStep";
 import { displayStepFromMillimeters, displayToMillimeters, formatMeasurementNumber, lengthDisplayUnit, millimetersToDisplay, parseMeasurementInput } from "@/lib/measurementUnits";
 import { SPLIT_AXIS_DISPLAY_ORDER, splitAxisLabel, splitRotationAxes, type SplitRotation } from "@/lib/modelSplit";
 import { GuideHelpLink } from "@/components/GuideHelpLink";
@@ -73,7 +73,7 @@ export function SplitPanel({
   useWheelField(positionInputRef, positionEditing && !busy, ({ direction, keys }) => {
     const parsed = parseMeasurementInput(positionDraft);
     const current = Number.isFinite(parsed) ? parsed : displayPosition;
-    const next = Math.min(displayMax, Math.max(displayMin, wheelNextValue(current, direction, wheelBaseStep(displayMin, displayMax, displayStep, unit === "in"), keys)));
+    const next = Math.min(displayMax, Math.max(displayMin, wheelNextValue(current, direction, lengthFieldWheelStep(wheelBaseStep(displayMin, displayMax, displayStep, unit === "in")), keys)));
     const shown = formatMeasurementNumber(next, workspace.accuracy, displayStep);
     positionWheelShownRef.current = shown;
     setPositionDraft(shown);
