@@ -245,3 +245,12 @@ button also switches to the flat (orthographic) view while locked; letting go pu
 Built: `lockView` switches a perspective view to flat as it locks and back as it lets go; pressing O by hand while
 locked means letting go leaves the projection alone. Waits on Adrian's try. Watch: the flat view zooms by its own
 zoom range (`orthographicZoomRange`), which may be where a zoom now stops.
+
+**Asked (Adrian, 2026-10-18):** pressing a view button (Top, Front, Right) a second time undoes it: back to the 3D
+view he had before the lock. Built for every view button (cube, keys 1–6, Layerling's commands, 3DxWare's own).
+Esc and the badge still only let go where the view is.
+Adrian (2026-10-18): Esc "only says selection cleared". In headless Chromium (SwiftShader, `.scratch/esc-check.mjs`)
+Esc did unlock, but left the camera on the side, so likely nothing seemed to happen and a second Esc cleared the
+selection. Now Esc, the badge and the same view button again all go back to the 3D view from before the lock
+(`leaveLockedView`); checked in that browser: Front then Esc, Front twice, Left then Top then the badge all land on
+the starting view, selection kept. Adrian said Esc may be dropped if it is a hassle; kept, as it works.

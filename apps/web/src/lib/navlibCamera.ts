@@ -98,6 +98,8 @@ export function createNavlibCameraModel(host: NavlibCameraHost): NavlibModel {
   const hit = { from: new THREE.Vector3(), direction: new THREE.Vector3(0, 0, -1), selectionOnly: false };
   let pendingTarget: THREE.Vector3 | null = null;
   let pivot: THREE.Vector3 | null = null;
+  let inMotion = false;
+  let motionEnded = -Infinity;
 
   const fallbackBox = () => new THREE.Box3(new THREE.Vector3(-50, 0, -50), new THREE.Vector3(50, 50, 50));
 
@@ -178,9 +180,12 @@ export function createNavlibCameraModel(host: NavlibCameraHost): NavlibModel {
     const rotation = new THREE.Quaternion();
     new THREE.Matrix4().fromArray(matrix).decompose(position, rotation, new THREE.Vector3());
     const before = camera.quaternion.clone();
-    // 3DxWare's own view buttons set the camera square to a side: that is the view button of the same name.
+    // 3DxWare's own view buttons set the camera square to a side: that is the view button of the same name. Away
+    // from a motion of the cap it is one, pressed again too; within one, or just after it (a last frame), only a
+    // move onto a side that it was not square to already (a pan in a square view stays square).
     const face = squareFace(rotation);
-    if (face && face !== squareFace(before) && host.squareView) {
+    const pressed = !inMotion && performance.now() - motionEnded > 300;
+    if (face && host.squareView && (pressed || face !== squareFace(before))) {
       host.squareView(face);
       return;
     }
@@ -267,6 +272,8 @@ export function createNavlibCameraModel(host: NavlibCameraHost): NavlibModel {
         if (typeof value === "number" && value > 0) pendingTarget = null;
         return true;
       case "motion":
+        if (inMotion && value !== true) motionEnded = performance.now();
+        inMotion = value === true;
         if (value !== true) pendingTarget = null;
         host.moving(value === true);
         return true;

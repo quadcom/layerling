@@ -284,10 +284,20 @@ describe("the 3D view's model", () => {
     model.write("view.affine", top.toArray());
     expect(faces).toEqual(["top"]);
     expect(camera.position.toArray()).toEqual([0, 0, 300]);
-    // A pan in a view that is already square is only a pan.
+    // A pan with the cap in a view that is already square is only a pan.
+    model.write("motion", true);
     model.write("view.affine", [1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1, 0, 5, 0, 300, 1]);
+    model.write("motion", false);
+    // A last frame right after the motion is still part of it.
+    model.write("view.affine", [1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1, 0, 6, 0, 300, 1]);
     expect(faces).toEqual(["top"]);
-    expect(camera.position.x).toBeCloseTo(5);
+    expect(camera.position.x).toBeCloseTo(6);
+    // Away from a motion, the button of the side it is square to already is that button pressed again.
+    const now = performance.now();
+    vi.spyOn(performance, "now").mockReturnValue(now + 1000);
+    model.write("view.affine", [1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1, 0, 6, 0, 300, 1]);
+    vi.restoreAllMocks();
+    expect(faces).toEqual(["top", "front"]);
   });
 
   it("stops a tilt at straight up too", () => {

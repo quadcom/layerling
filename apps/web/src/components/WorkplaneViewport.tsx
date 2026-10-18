@@ -3348,6 +3348,9 @@ export function WorkplaneViewport({
   const [viewLocked, setViewLocked] = useState(false);
   const viewLockedRef = useRef(false);
   const viewLockFlattenedRef = useRef(false);
+  // The side it is held to, and the view from before, which the same view button pressed again goes back to.
+  const viewLockFaceRef = useRef<ViewCubeFace | null>(null);
+  const viewBeforeLockRef = useRef<{ position: THREE.Vector3; target: THREE.Vector3; zoom: number; orthographic: boolean } | null>(null);
   const lockView = useCallback((locked: boolean) => {
     const wasLocked = viewLockedRef.current;
     viewLockedRef.current = locked;
@@ -3361,7 +3364,11 @@ export function WorkplaneViewport({
     } else if (!locked && wasLocked && viewLockFlattenedRef.current && state.camera instanceof THREE.OrthographicCamera) {
       toggleCameraProjection(state);
     }
-    if (!locked) viewLockFlattenedRef.current = false;
+    if (!locked) {
+      viewLockFlattenedRef.current = false;
+      viewLockFaceRef.current = null;
+      viewBeforeLockRef.current = null;
+    }
     setOrthographicView(state.camera instanceof THREE.OrthographicCamera);
   }, []);
   // Der Umschalter fuer das Drehen mit einem Finger steht nur dort, wo er
@@ -8080,17 +8087,50 @@ export function WorkplaneViewport({
     }
   }, [lockView]);
 
+  /** Lets a held view go and goes back to the view from before it, as it was (Esc, the badge, its button again). */
+  const leaveLockedView = useCallback(() => {
+    const state = threeRef.current;
+    const before = viewBeforeLockRef.current;
+    lockView(false);
+    if (!state || !before) return;
+    if ((state.camera instanceof THREE.OrthographicCamera) !== before.orthographic) toggleCameraProjection(state);
+    state.camera.up.set(0, 1, 0);
+    state.camera.position.copy(before.position);
+    state.controls.target.copy(before.target);
+    state.camera.zoom = before.zoom;
+    state.camera.lookAt(before.target);
+    state.camera.updateProjectionMatrix();
+    state.controls.update();
+    setOrthographicView(state.camera instanceof THREE.OrthographicCamera);
+    syncViewCube(state, viewCubeRef.current);
+    state.needsRender = true;
+  }, [lockView]);
+
   const setViewCubeFace = useCallback((face: ViewCubeFace) => {
     const state = threeRef.current;
     if (!state) {
       return;
     }
+    const before = viewBeforeLockRef.current;
+    if (viewLockedRef.current && viewLockFaceRef.current === face) {
+      // Pressed again: back to the view from before.
+      leaveLockedView();
+      return;
+    }
+    const kept = viewLockedRef.current ? before : {
+      position: state.camera.position.clone(),
+      target: state.controls.target.clone(),
+      zoom: state.camera.zoom,
+      orthographic: state.camera instanceof THREE.OrthographicCamera,
+    };
     setCameraToViewFace(state, face);
     syncViewCube(state, viewCubeRef.current);
     lockView(true);
-  }, [lockView]);
+    viewLockFaceRef.current = face;
+    viewBeforeLockRef.current = kept;
+  }, [leaveLockedView, lockView]);
 
-  // Esc lets a locked view go before anything else it does, so the selection stays (the SpaceMouse's Esc
+  // Esc goes back from a locked view before anything else it does, so the selection stays (the SpaceMouse's Esc
   // button sends the same key). It listens first, ahead of the editor's own Escape; a drag still takes it.
   useEffect(() => {
     if (!viewLocked) return;
@@ -8101,11 +8141,11 @@ export function WorkplaneViewport({
       if (target?.closest("input, textarea, select, [contenteditable='true'], [role='dialog']")) return;
       event.preventDefault();
       markEscapeHandled(event);
-      lockView(false);
+      leaveLockedView();
     };
     window.addEventListener("keydown", onKeyDown, true);
     return () => window.removeEventListener("keydown", onKeyDown, true);
-  }, [viewLocked, lockView]);
+  }, [viewLocked, leaveLockedView]);
 
   // The bands along a face's sides and its corners look from that edge or corner (#202).
   const viewCubeZones = (face: ViewCubeFace) => VIEW_CUBE_ZONES.map(([column, row]) => (
@@ -8694,7 +8734,7 @@ export function WorkplaneViewport({
         </div>
       </div>
       {viewLocked ? (
-        <button type="button" className="view-lock-badge" aria-label={t("view.unlock")} aria-keyshortcuts="Escape" title={t("view.unlock")} onClick={() => lockView(false)}>
+        <button type="button" className="view-lock-badge" aria-label={t("view.unlock")} aria-keyshortcuts="Escape" title={t("view.unlock")} onClick={leaveLockedView}>
           <Lock size={14} strokeWidth={2.4} aria-hidden="true" />
         </button>
       ) : null}
