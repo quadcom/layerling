@@ -11,7 +11,7 @@ import type { NavlibModel } from "@/lib/navlib";
  * as its target, or else at the depth the old target lies at, so a push forward comes closer to it. Once that is
  * nearly as close as the view may come, the target moves on to what lies ahead, as the wheel does: the zoom goes
  * right up to the model. Carrying the target along instead ran it off the plate, and the plate's limit on the
- * target then held the camera back.
+ * target then held the camera back. While a view button holds the view to its side, 3DxWare only pans and zooms.
  */
 export type NavlibCameraHost = {
   camera(): THREE.PerspectiveCamera | THREE.OrthographicCamera;
@@ -20,6 +20,8 @@ export type NavlibCameraHost = {
   zoomRange(): { min: number; max: number };
   /** How close the normal view may come to its target. */
   minDistance(): number;
+  /** The view is held to one side: 3DxWare may pan and zoom it, not turn it. */
+  locked?(): boolean;
   modelBox(): THREE.Box3 | null;
   selectionBox(): THREE.Box3 | null;
   /** The nearest point of the model (or of the selection) on a ray, or null. */
@@ -111,7 +113,7 @@ export function createNavlibCameraModel(host: NavlibCameraHost): NavlibModel {
       case "view.target":
         return host.target().toArray();
       case "view.rotatable":
-        return true;
+        return !host.locked?.();
       case "view.constructionPlane":
       case "model.floorPlane":
         return [...PLANE_UP];
@@ -156,8 +158,15 @@ export function createNavlibCameraModel(host: NavlibCameraHost): NavlibModel {
     const rotation = new THREE.Quaternion();
     new THREE.Matrix4().fromArray(matrix).decompose(position, rotation, new THREE.Vector3());
     const forward = new THREE.Vector3(0, 0, -1).applyQuaternion(rotation).normalize();
-    const limited = limitTilt(camera.getWorldDirection(new THREE.Vector3()), forward, rotation);
-    if (limited) {
+    // A view held to one side keeps its turn: 3DxWare's is taken back about its pivot, its pan and zoom stay.
+    const held = host.locked?.() ? camera.quaternion.clone() : null;
+    const limited = held ? null : limitTilt(camera.getWorldDirection(new THREE.Vector3()), forward, rotation);
+    if (held) {
+      const back = held.clone().multiply(rotation.clone().invert());
+      const about = pivot ?? target;
+      position.sub(about).applyQuaternion(back).add(about);
+      forward.set(0, 0, -1).applyQuaternion(held);
+    } else if (limited) {
       // The turn back to the limit goes round the pivot 3DxWare turned about, so what it turned about stays put.
       const back = new THREE.Quaternion().setFromUnitVectors(forward, limited);
       const about = pivot ?? target;
@@ -179,7 +188,9 @@ export function createNavlibCameraModel(host: NavlibCameraHost): NavlibModel {
     target.copy(position).addScaledVector(forward, depth);
     camera.position.copy(position);
     camera.up.set(0, 1, 0);
-    camera.lookAt(target);
+    // Straight down or up has no heading of its own for lookAt to find: a held top view keeps the one it has.
+    if (held) camera.quaternion.copy(held);
+    else camera.lookAt(target);
     camera.updateMatrixWorld();
     host.changed();
   };

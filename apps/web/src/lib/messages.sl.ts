@@ -1491,6 +1491,7 @@ export const MESSAGES_SL: Partial<Record<MessageKey, string>> = {
   "view.left": "Pogled z leve",
   "view.topShort": "ZGORAJ",
   "view.bottomShort": "SPODAJ",
+  "view.unlock": "Vrtenje je zaklenjeno na ta pogled. Pritisnite Esc ali kliknite tukaj, da ga spet vrtite.",
   "view.frontShort": "SPREDAJ",
   "view.backShort": "ZADAJ",
   "view.rightShort": "DESNO",

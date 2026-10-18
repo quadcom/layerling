@@ -1987,6 +1987,7 @@ export const MESSAGES_RU: Partial<Record<MessageKey, string>> = {
   "view.left": "Вид слева",
   "view.topShort": "СВЕРХУ",
   "view.bottomShort": "СНИЗУ",
+  "view.unlock": "Вращение закреплено на этом виде. Нажмите Esc или щёлкните здесь, чтобы снова вращать.",
   "view.frontShort": "СПЕРЕДИ",
   "view.backShort": "СЗАДИ",
   "view.rightShort": "СПРАВА",

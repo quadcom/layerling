@@ -1995,6 +1995,7 @@ export const MESSAGES_CS: Record<MessageKey, string> = {
   "view.left": "Pohled zleva",
   "view.topShort": "SHORA",
   "view.bottomShort": "ZDOLA",
+  "view.unlock": "Otáčení je zamčené na tento pohled. Stiskněte Esc nebo sem klikněte, abyste mohli znovu otáčet.",
   "view.frontShort": "ZEPŘEDU",
   "view.backShort": "ZEZADU",
   "view.rightShort": "ZPRAVA",

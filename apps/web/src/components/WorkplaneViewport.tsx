@@ -1,7 +1,7 @@
 "use client";
 
-import { markEscapeHandled } from "@/lib/escapeHandled";
-import { ArrowDownToLine, Check, ChevronLeft, ChevronRight, Crosshair, Cuboid, Download, Eye, EyeOff, FlipHorizontal, GripVertical, Home, Layers, Minus, MousePointer2, PanelsTopLeft, Plus, Rotate3d, RotateCcw, Ruler, RulerDimensionLine, Slice, Spline, Trash2, X } from "lucide-react";
+import { escapeWasHandled, markEscapeHandled } from "@/lib/escapeHandled";
+import { ArrowDownToLine, Check, ChevronLeft, ChevronRight, Crosshair, Cuboid, Download, Eye, EyeOff, FlipHorizontal, GripVertical, Home, Layers, Lock, Minus, MousePointer2, PanelsTopLeft, Plus, Rotate3d, RotateCcw, Ruler, RulerDimensionLine, Slice, Spline, Trash2, X } from "lucide-react";
 import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState, type CSSProperties, type Dispatch, type DragEvent, type MouseEvent as ReactMouseEvent, type MutableRefObject, type PointerEvent as ReactPointerEvent, type ReactNode, type SetStateAction, type WheelEvent as ReactWheelEvent } from "react";
 import { objectSnapOffset, shiftSnapBox, type ObjectSnapGuide, type SnapBox } from "@/lib/objectSnap";
 import { useMovablePanel, type MovablePanelOptions } from "@/lib/useMovablePanel";
@@ -3341,6 +3341,16 @@ export function WorkplaneViewport({
   const viewCubeDragRef = useRef<ViewCubeDrag | null>(null);
   const suppressViewCubeClickRef = useRef(false);
   const [viewCubeDragging, setViewCubeDragging] = useState(false);
+  // A view button holds the view to its side, for lining parts up: turning stops, for the mouse and the
+  // SpaceMouse alike, until Esc, the house button or a turn on the view cube lets it go. Pan and zoom still work.
+  const [viewLocked, setViewLocked] = useState(false);
+  const viewLockedRef = useRef(false);
+  const lockView = useCallback((locked: boolean) => {
+    viewLockedRef.current = locked;
+    setViewLocked(locked);
+    const state = threeRef.current;
+    if (state) state.controls.enableRotate = !locked;
+  }, []);
   // Der Umschalter fuer das Drehen mit einem Finger steht nur dort, wo er
   // gebraucht wird. Anfangs falsch, damit das ausgelieferte HTML passt.
   const [touchDevice, setTouchDevice] = useState(false);
@@ -4301,6 +4311,7 @@ export function WorkplaneViewport({
       return thumbnailPngDataUrl(state.renderer.domElement);
     };
     window.layerlingOrbitView = (azimuthDegrees, polarDegrees) => {
+      lockView(false);
       const target = state.controls.target;
       const offset = state.camera.position.clone().sub(target);
       const spherical = new THREE.Spherical().setFromVector3(offset);
@@ -4437,6 +4448,7 @@ export function WorkplaneViewport({
     const unregisterSpaceMouse = registerSpaceMouseView(createNavlibCameraModel({
       camera: () => state.camera,
       target: () => state.controls.target,
+      locked: () => viewLockedRef.current,
       zoomRange: () => ({ min: state.controls.minZoom, max: state.controls.maxZoom }),
       minDistance: () => state.controls.minDistance,
       modelBox: () => {
@@ -8047,11 +8059,12 @@ export function WorkplaneViewport({
 
   const resetView = useCallback(() => {
     const state = threeRef.current;
+    lockView(false);
     if (state) {
       resetCamera(state);
       state.needsRender = true;
     }
-  }, []);
+  }, [lockView]);
 
   const setViewCubeFace = useCallback((face: ViewCubeFace) => {
     const state = threeRef.current;
@@ -8060,7 +8073,25 @@ export function WorkplaneViewport({
     }
     setCameraToViewFace(state, face);
     syncViewCube(state, viewCubeRef.current);
-  }, []);
+    lockView(true);
+  }, [lockView]);
+
+  // Esc lets a locked view go before anything else it does, so the selection stays (the SpaceMouse's Esc
+  // button sends the same key). It listens first, ahead of the editor's own Escape; a drag still takes it.
+  useEffect(() => {
+    if (!viewLocked) return;
+    const onKeyDown = (event: KeyboardEvent) => {
+      if (event.key !== "Escape" || escapeWasHandled(event)) return;
+      if (transformRef.current || dragRef.current || marqueeRef.current) return;
+      const target = event.target instanceof HTMLElement ? event.target : null;
+      if (target?.closest("input, textarea, select, [contenteditable='true'], [role='dialog']")) return;
+      event.preventDefault();
+      markEscapeHandled(event);
+      lockView(false);
+    };
+    window.addEventListener("keydown", onKeyDown, true);
+    return () => window.removeEventListener("keydown", onKeyDown, true);
+  }, [viewLocked, lockView]);
 
   // The bands along a face's sides and its corners look from that edge or corner (#202).
   const viewCubeZones = (face: ViewCubeFace) => VIEW_CUBE_ZONES.map(([column, row]) => (
@@ -8078,6 +8109,7 @@ export function WorkplaneViewport({
         event.stopPropagation();
         const state = threeRef.current;
         if (!state) return;
+        lockView(false);
         setCameraToViewDirection(state, viewCubeZoneDirection(face, column, row));
         syncViewCube(state, viewCubeRef.current);
       }}
@@ -8107,6 +8139,7 @@ export function WorkplaneViewport({
       // lands on the face button underneath.
       capturePointer(event.currentTarget, event.pointerId);
       setViewCubeDragging(true);
+      lockView(false);
     }
     const state = threeRef.current;
     if (!state) {
@@ -8114,7 +8147,7 @@ export function WorkplaneViewport({
     }
     orbitCameraByDrag(state, move.dx, move.dy);
     syncViewCube(state, viewCubeRef.current);
-  }, []);
+  }, [lockView]);
 
   const endViewCubeDrag = useCallback((event: ReactPointerEvent<HTMLDivElement>) => {
     const drag = viewCubeDragRef.current;
@@ -8545,7 +8578,9 @@ export function WorkplaneViewport({
       }
 
       const key = event.key.toLowerCase();
-      if (event.key === "Escape" && (transformRef.current || dragRef.current || marqueeRef.current)) {
+      if (event.key === "Escape" && escapeWasHandled(event)) {
+        // Already used to let a locked view go.
+      } else if (event.key === "Escape" && (transformRef.current || dragRef.current || marqueeRef.current)) {
         event.preventDefault();
         markEscapeHandled(event);
         cancelActiveDragRef.current();
@@ -8642,6 +8677,11 @@ export function WorkplaneViewport({
           <button type="button" className="cube-face cube-left" aria-label={t("view.left")} aria-keyshortcuts="3" title={t("camera.shortcut", { label: t("view.left"), keys: "3" })} onClick={() => setViewCubeFace("left")}>{t("view.leftShort")}{viewCubeZones("left")}</button>
         </div>
       </div>
+      {viewLocked ? (
+        <button type="button" className="view-lock-badge" aria-label={t("view.unlock")} aria-keyshortcuts="Escape" title={t("view.unlock")} onClick={() => lockView(false)}>
+          <Lock size={14} strokeWidth={2.4} aria-hidden="true" />
+        </button>
+      ) : null}
 
       <div className={`camera-controls ${cameraControlsCollapsed ? "collapsed" : ""}`} aria-label={t("camera.controls")} data-help-section="cameraBar">
         {cameraControlsCollapsed ? (

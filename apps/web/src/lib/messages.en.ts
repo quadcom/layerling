@@ -1997,6 +1997,7 @@ export const MESSAGES_EN = {
   "view.left": "Left view",
   "view.topShort": "TOP",
   "view.bottomShort": "BOTTOM",
+  "view.unlock": "Turning is locked to this view. Press Esc or click here to turn it again.",
   "view.frontShort": "FRONT",
   "view.backShort": "BACK",
   "view.rightShort": "RIGHT",

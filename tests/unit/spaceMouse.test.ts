@@ -227,6 +227,38 @@ describe("the 3D view's model", () => {
     expect(up.z).toBeLessThan(0);
   });
 
+  it("only pans and zooms a view held to one side: 3DxWare's turn is taken back about its pivot", () => {
+    const { model, camera, target, host } = cameraHost();
+    let locked = true;
+    host.locked = () => locked;
+    expect(model.read("view.rotatable")).toBe(false);
+    // Turned 30 degrees about the target and moved 10 to the camera's right: only the move is kept.
+    const turn = new THREE.Matrix4().makeRotationY(THREE.MathUtils.degToRad(30));
+    const turned = new THREE.Matrix4().makeTranslation(0, 0, 300).premultiply(turn).multiply(new THREE.Matrix4().makeTranslation(10, 0, 0));
+    model.write("view.affine", turned.toArray());
+    const forward = camera.getWorldDirection(new THREE.Vector3());
+    expect(forward.x).toBeCloseTo(0, 6);
+    expect(forward.z).toBeCloseTo(-1, 6);
+    expect(camera.position.x).toBeCloseTo(10, 4);
+    expect(camera.position.z).toBeCloseTo(300, 4);
+    expect(target.z).toBeCloseTo(0, 4);
+    locked = false;
+    expect(model.read("view.rotatable")).toBe(true);
+  });
+
+  it("keeps a held top view's heading, which lookAt could not find", () => {
+    const { model, camera, host } = cameraHost();
+    camera.position.set(0, 300, 0);
+    camera.up.set(0, 1, 0);
+    camera.lookAt(0, 0, 0);
+    camera.updateMatrixWorld();
+    const before = camera.quaternion.clone();
+    host.locked = () => true;
+    model.write("view.affine", new THREE.Matrix4().compose(new THREE.Vector3(5, 300, 0), before, new THREE.Vector3(1, 1, 1)).toArray());
+    expect(camera.quaternion.angleTo(before)).toBeCloseTo(0, 6);
+    expect(camera.position.toArray().map((value) => Math.round(value))).toEqual([5, 300, 0]);
+  });
+
   it("stops a tilt at straight up too", () => {
     const { model, camera } = cameraHost();
     const tilted = (degrees: number) => {

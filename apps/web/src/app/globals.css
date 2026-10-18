@@ -7543,6 +7543,34 @@ html[data-theme="dark"] .sketch-image-hint {
   cursor: grabbing;
 }
 
+/* Shown while a view button holds the view to its side; a click lets it go, as Esc does. */
+.view-lock-badge {
+  position: absolute;
+  top: 22px;
+  left: 96px;
+  z-index: 11;
+  display: grid;
+  width: 26px;
+  height: 26px;
+  padding: 0;
+  place-items: center;
+  color: #8e4b06;
+  background: #f4efe5;
+  border: 1px solid #d48a3d;
+  border-radius: 50%;
+  box-shadow: 0 2px 6px rgba(84, 59, 32, 0.14);
+  cursor: pointer;
+}
+
+.view-lock-badge:hover {
+  background: #fbe9d2;
+}
+
+.view-lock-badge:focus-visible {
+  outline: 2px solid #c56808;
+  outline-offset: 2px;
+}
+
 .view-cube-inner {
   position: relative;
   width: 58px;
@@ -13926,6 +13954,16 @@ html[data-theme="dark"] .snap-menu button,
 html[data-theme="dark"] .snap-object-toggle,
 html[data-theme="dark"] .snap-row {
   color: #d5c4b3;
+}
+
+html[data-theme="dark"] .view-lock-badge {
+  color: #f2b26b;
+  background: rgba(40, 30, 20, 0.97);
+  border-color: #b87430;
+}
+
+html[data-theme="dark"] .view-lock-badge:hover {
+  background: rgba(84, 66, 46, 0.9);
 }
 
 html[data-theme="dark"] .camera-controls button:hover {

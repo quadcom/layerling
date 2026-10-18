@@ -1996,6 +1996,7 @@ export const MESSAGES_DE: Record<MessageKey, string> = {
   "view.left": "Ansicht von links",
   "view.topShort": "OBEN",
   "view.bottomShort": "UNTEN",
+  "view.unlock": "Drehen ist auf diese Ansicht gesperrt. Esc drücken oder hier klicken, um wieder zu drehen.",
   "view.frontShort": "VORN",
   "view.backShort": "HINTEN",
   "view.rightShort": "RECHTS",

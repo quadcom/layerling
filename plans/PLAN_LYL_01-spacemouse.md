@@ -197,3 +197,28 @@ route depends on what it shows.
 **Adrian's answers on the lock (2026-10-18):** it must work for everyone, not only SpaceMouse users: a view
 button locks turning for the mouse too. **Esc** leaves the lock (the SpaceMouse's Esc button sends Esc through
 3DxWare, so it does too). Show a small lock badge by the view cube while locked.
+
+**Upstream PRs (Adrian, 2026-10-18):** he wants to send this work to henmedia/layerling as PRs. Proposed: one PR
+for SpaceMouse support (`spacemouse` + `spacemouse-simplify` + `orbit-fix`, squashed onto the latest
+`upstream/main`, without `plans/` and without the fork-image workflow), and the view lock as a second PR.
+Upstream was 40 commits ahead of `main` on 2026-10-18. Waits on his OK before anything is pushed or opened.
+Order (Adrian, 2026-10-18): build and finish the view lock first, on branch `view-lock`; once it works, push both PRs.
+The lock PR changes SpaceMouse code that is not upstream yet, so `view-lock` is built on top of `orbit-fix` and
+its PR goes up after (or stacked on) the SpaceMouse PR.
+
+### View lock: built on `view-lock` (2026-10-18), not yet tried by Adrian
+
+- A view button, keys 1–6 or a SpaceMouse view command locks turning (`lockView` in `WorkplaneViewport.tsx`):
+  the orbit controls' `enableRotate` goes off, and 3DxWare is told `view.rotatable` = false; any turn it still
+  sends is taken back about its pivot (`navlibCamera.ts`), so the cap only pans and zooms. F (fit) keeps the lock.
+- Let go by: Esc (a capture-phase listener that runs before the editor's, so the selection stays; a drag in
+  progress still takes Esc first), the house button, a view cube edge or corner, a drag on the view cube, the
+  badge, or the MCP orbit tool. Another view button moves the lock to that side.
+- Badge: a round lock button right of the view cube (`.view-lock-badge`, light and dark); words `view.unlock` in
+  en, de, fr, nl, cs, ru, sl. Graphite theme rebuilt.
+- Tests: 2 new unit tests (held view only pans and zooms; a held top view keeps its heading). Type check clean;
+  full suite passes except the known `useRememberedFlag` failures.
+- Not checked in a browser: the browser tool can't open the 3D editor (no WebGL). Waits on Adrian to try it in
+  Firefox: mouse orbit locked after Top/Front, Esc and badge unlock, cap pans/zooms but doesn't turn while locked.
+- Open: Esc unlocks before it puts down a tool or leaves a mode (tape, section, workplane); say if that is wrong.
+  No guide page or shortcuts-list entry yet.
