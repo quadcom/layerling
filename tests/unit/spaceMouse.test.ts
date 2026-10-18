@@ -206,6 +206,114 @@ describe("the 3D view's model", () => {
     expect(up.y).toBeCloseTo(1);
   });
 
+  it("stops a tilt at straight down, as the mouse does, rather than spinning round to come down on the back", () => {
+    const { model, camera, target } = cameraHost();
+    // Turned about the target until the camera is 10 degrees past the top, upside down.
+    const tilted = (degrees: number) => {
+      const turn = new THREE.Matrix4().makeRotationX(-THREE.MathUtils.degToRad(degrees));
+      return new THREE.Matrix4().makeTranslation(0, 0, 300).premultiply(turn).toArray();
+    };
+    model.write("view.affine", tilted(85));
+    expect(camera.position.z).toBeGreaterThan(0);
+    model.write("view.affine", tilted(100));
+    const forward = camera.getWorldDirection(new THREE.Vector3());
+    expect(forward.y).toBeCloseTo(-1, 5);
+    // Still on the front side, looking the same way, and still round the target.
+    expect(camera.position.z).toBeGreaterThan(0);
+    expect(forward.z).toBeLessThan(0);
+    expect(camera.position.y).toBeCloseTo(300, 0);
+    expect(target.toArray().map((value) => Math.round(value) + 0)).toEqual([0, 0, 0]);
+    const up = new THREE.Vector3(0, 1, 0).applyQuaternion(camera.quaternion);
+    expect(up.z).toBeLessThan(0);
+  });
+
+  it("only pans and zooms a view held to one side: 3DxWare's turn is taken back about its pivot", () => {
+    const { model, camera, target, host } = cameraHost();
+    let locked = true;
+    host.locked = () => locked;
+    expect(model.read("view.rotatable")).toBe(true);
+    // Turned 30 degrees about the target and moved 10 to the camera's right: only the move is kept.
+    const turn = new THREE.Matrix4().makeRotationY(THREE.MathUtils.degToRad(30));
+    const turned = new THREE.Matrix4().makeTranslation(0, 0, 300).premultiply(turn).multiply(new THREE.Matrix4().makeTranslation(10, 0, 0));
+    model.write("view.affine", turned.toArray());
+    const forward = camera.getWorldDirection(new THREE.Vector3());
+    expect(forward.x).toBeCloseTo(0, 6);
+    expect(forward.z).toBeCloseTo(-1, 6);
+    expect(camera.position.x).toBeCloseTo(10, 4);
+    expect(camera.position.z).toBeCloseTo(300, 4);
+    expect(target.z).toBeCloseTo(0, 4);
+    locked = false;
+    expect(model.read("view.rotatable")).toBe(true);
+  });
+
+  it("keeps a held top view's heading, which lookAt could not find", () => {
+    const { model, camera, host } = cameraHost();
+    camera.position.set(0, 300, 0);
+    camera.up.set(0, 1, 0);
+    camera.lookAt(0, 0, 0);
+    camera.updateMatrixWorld();
+    const before = camera.quaternion.clone();
+    host.locked = () => true;
+    model.write("view.affine", new THREE.Matrix4().compose(new THREE.Vector3(5, 300, 0), before, new THREE.Vector3(1, 1, 1)).toArray());
+    expect(camera.quaternion.angleTo(before)).toBeCloseTo(0, 6);
+    expect(camera.position.toArray().map((value) => Math.round(value))).toEqual([5, 300, 0]);
+  });
+
+  it("turns a twist near straight down into a spin round the vertical, not a swing over the top", () => {
+    const { model, camera } = cameraHost();
+    // Looking down 2 degrees off straight down, then twisted 5 degrees about the screen's up, as the cap does.
+    const down = new THREE.Matrix4().makeRotationX(-THREE.MathUtils.degToRad(88));
+    model.write("view.affine", new THREE.Matrix4().makeTranslation(0, 0, 300).premultiply(down).toArray());
+    const up = new THREE.Vector3(0, 1, 0).applyQuaternion(camera.quaternion);
+    const twist = new THREE.Quaternion().setFromAxisAngle(up, THREE.MathUtils.degToRad(5));
+    const twisted = camera.quaternion.clone().premultiply(twist);
+    const at = camera.position.clone().applyQuaternion(twist);
+    model.write("view.affine", new THREE.Matrix4().compose(at, twisted, new THREE.Vector3(1, 1, 1)).toArray());
+    const forward = camera.getWorldDirection(new THREE.Vector3());
+    // Still 2 degrees off straight down, and the heading turned by the 5 degrees of the twist, not by 68.
+    expect(THREE.MathUtils.radToDeg(Math.acos(-forward.y))).toBeCloseTo(2, 4);
+    expect(THREE.MathUtils.radToDeg(Math.atan2(-forward.x, -forward.z))).toBeCloseTo(5, 4);
+    expect(new THREE.Vector3(1, 0, 0).applyQuaternion(camera.quaternion).y).toBeCloseTo(0, 6);
+  });
+
+  it("takes 3DxWare's own Top, Front, Right... buttons as the view buttons of that side", () => {
+    const { model, camera, host } = cameraHost();
+    const faces: string[] = [];
+    host.squareView = (face) => { faces.push(face); };
+    const top = new THREE.Matrix4().makeRotationX(-Math.PI / 2).setPosition(0, 300, 0);
+    model.write("view.affine", top.toArray());
+    expect(faces).toEqual(["top"]);
+    expect(camera.position.toArray()).toEqual([0, 0, 300]);
+    // A pan with the cap in a view that is already square is only a pan.
+    model.write("motion", true);
+    model.write("view.affine", [1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1, 0, 5, 0, 300, 1]);
+    model.write("motion", false);
+    // A last frame right after the motion is still part of it.
+    model.write("view.affine", [1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1, 0, 6, 0, 300, 1]);
+    expect(faces).toEqual(["top"]);
+    expect(camera.position.x).toBeCloseTo(6);
+    // Away from a motion, the button of the side it is square to already is that button pressed again.
+    const now = performance.now();
+    vi.spyOn(performance, "now").mockReturnValue(now + 1000);
+    model.write("view.affine", [1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1, 0, 6, 0, 300, 1]);
+    vi.restoreAllMocks();
+    expect(faces).toEqual(["top", "front"]);
+  });
+
+  it("stops a tilt at straight up too", () => {
+    const { model, camera } = cameraHost();
+    const tilted = (degrees: number) => {
+      const turn = new THREE.Matrix4().makeRotationX(THREE.MathUtils.degToRad(degrees));
+      return new THREE.Matrix4().makeTranslation(0, 0, 300).premultiply(turn).toArray();
+    };
+    model.write("view.affine", tilted(85));
+    model.write("view.affine", tilted(95));
+    const forward = camera.getWorldDirection(new THREE.Vector3());
+    expect(forward.y).toBeCloseTo(1, 5);
+    expect(camera.position.z).toBeGreaterThan(0);
+    expect(forward.z).toBeLessThan(0);
+  });
+
   it("does not carry the target off when the zoom gets close: it stops at the surface ahead (the plate's limit held it back)", () => {
     const { model, target } = cameraHost();
     model.write("view.affine", [1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1, 0, 0, 0, 3.5, 1]);

@@ -2054,6 +2054,7 @@ export const MESSAGES_FR: Partial<Record<MessageKey, string>> = {
   "view.left": "Vue gauche",
   "view.topShort": "HAUT",
   "view.bottomShort": "BAS",
+  "view.unlock": "La rotation est verrouillée sur cette vue. Appuyez sur Échap ou cliquez ici pour tourner à nouveau.",
   "view.frontShort": "AVANT",
   "view.backShort": "RETOUR",
   "view.rightShort": "À DROITE",

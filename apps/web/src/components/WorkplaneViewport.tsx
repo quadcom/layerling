@@ -1,7 +1,7 @@
 "use client";
 
-import { markEscapeHandled } from "@/lib/escapeHandled";
-import { ArrowDownToLine, Check, ChevronLeft, ChevronRight, Crosshair, Cuboid, Download, Eye, EyeOff, FlipHorizontal, GripVertical, Home, Layers, Minus, MousePointer2, PanelsTopLeft, Plus, Rotate3d, RotateCcw, Ruler, RulerDimensionLine, Slice, Spline, Trash2, X } from "lucide-react";
+import { escapeWasHandled, markEscapeHandled } from "@/lib/escapeHandled";
+import { ArrowDownToLine, Check, ChevronLeft, ChevronRight, Crosshair, Cuboid, Download, Eye, EyeOff, FlipHorizontal, GripVertical, Home, Layers, Lock, Minus, MousePointer2, PanelsTopLeft, Plus, Rotate3d, RotateCcw, Ruler, RulerDimensionLine, Slice, Spline, Trash2, X } from "lucide-react";
 import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState, type CSSProperties, type Dispatch, type DragEvent, type MouseEvent as ReactMouseEvent, type MutableRefObject, type PointerEvent as ReactPointerEvent, type ReactNode, type SetStateAction, type WheelEvent as ReactWheelEvent } from "react";
 import { objectSnapOffset, shiftSnapBox, type ObjectSnapGuide, type SnapBox } from "@/lib/objectSnap";
 import { useMovablePanel, type MovablePanelOptions } from "@/lib/useMovablePanel";
@@ -3399,6 +3399,36 @@ export function WorkplaneViewport({
   const viewCubeDragRef = useRef<ViewCubeDrag | null>(null);
   const suppressViewCubeClickRef = useRef(false);
   const [viewCubeDragging, setViewCubeDragging] = useState(false);
+  // A view button holds the view to its side, for lining parts up: turning stops, for the mouse and the
+  // SpaceMouse alike, until Esc, the house button or a turn on the view cube lets it go. Pan and zoom still work.
+  // It also flattens the view, so the side is seen straight on, with no perspective; letting go puts the
+  // perspective back, unless the flat view was switched by hand in the meantime.
+  const [viewLocked, setViewLocked] = useState(false);
+  const viewLockedRef = useRef(false);
+  const viewLockFlattenedRef = useRef(false);
+  // The side it is held to, and the view from before, which the same view button pressed again goes back to.
+  const viewLockFaceRef = useRef<ViewCubeFace | null>(null);
+  const viewBeforeLockRef = useRef<{ position: THREE.Vector3; target: THREE.Vector3; zoom: number; orthographic: boolean } | null>(null);
+  const lockView = useCallback((locked: boolean) => {
+    const wasLocked = viewLockedRef.current;
+    viewLockedRef.current = locked;
+    setViewLocked(locked);
+    const state = threeRef.current;
+    if (!state) return;
+    state.controls.enableRotate = !locked;
+    if (locked && state.camera instanceof THREE.PerspectiveCamera) {
+      toggleCameraProjection(state);
+      viewLockFlattenedRef.current = true;
+    } else if (!locked && wasLocked && viewLockFlattenedRef.current && state.camera instanceof THREE.OrthographicCamera) {
+      toggleCameraProjection(state);
+    }
+    if (!locked) {
+      viewLockFlattenedRef.current = false;
+      viewLockFaceRef.current = null;
+      viewBeforeLockRef.current = null;
+    }
+    setOrthographicView(state.camera instanceof THREE.OrthographicCamera);
+  }, []);
   // Der Umschalter fuer das Drehen mit einem Finger steht nur dort, wo er
   // gebraucht wird. Anfangs falsch, damit das ausgelieferte HTML passt.
   const [touchDevice, setTouchDevice] = useState(false);
@@ -4336,7 +4366,7 @@ export function WorkplaneViewport({
       renderFrame(state);
       return thumbnailPngDataUrl(state.renderer.domElement);
     };
-    window.layerlingOrbitView = (azimuthDegrees, polarDegrees) => { orbitViewBy(state, azimuthDegrees, polarDegrees); state.needsRender = true; };
+    window.layerlingOrbitView = (azimuthDegrees, polarDegrees) => { lockView(false); orbitViewBy(state, azimuthDegrees, polarDegrees); state.needsRender = true; };
     window.layerlingPanView = (rightFraction, upFraction) => { panViewBy(state, rightFraction, upFraction); state.needsRender = true; };
     window.layerlingCaptureView = (face = "current") => {
       if (face === "home") {
@@ -4458,6 +4488,8 @@ export function WorkplaneViewport({
     const unregisterSpaceMouse = registerSpaceMouseView(createNavlibCameraModel({
       camera: () => state.camera,
       target: () => state.controls.target,
+      locked: () => viewLockedRef.current,
+      squareView: (face) => setViewCubeFace(face),
       zoomRange: () => ({ min: state.controls.minZoom, max: state.controls.maxZoom }),
       minDistance: () => state.controls.minDistance,
       modelBox: () => {
@@ -8153,20 +8185,72 @@ export function WorkplaneViewport({
 
   const resetView = useCallback(() => {
     const state = threeRef.current;
+    lockView(false);
     if (state) {
       resetCamera(state);
       state.needsRender = true;
     }
-  }, []);
+  }, [lockView]);
+
+  /** Lets a held view go and goes back to the view from before it, as it was (Esc, the badge, its button again). */
+  const leaveLockedView = useCallback(() => {
+    const state = threeRef.current;
+    const before = viewBeforeLockRef.current;
+    lockView(false);
+    if (!state || !before) return;
+    if ((state.camera instanceof THREE.OrthographicCamera) !== before.orthographic) toggleCameraProjection(state);
+    state.camera.up.set(0, 1, 0);
+    state.camera.position.copy(before.position);
+    state.controls.target.copy(before.target);
+    state.camera.zoom = before.zoom;
+    state.camera.lookAt(before.target);
+    state.camera.updateProjectionMatrix();
+    state.controls.update();
+    setOrthographicView(state.camera instanceof THREE.OrthographicCamera);
+    syncViewCube(state, viewCubeRef.current);
+    state.needsRender = true;
+  }, [lockView]);
 
   const setViewCubeFace = useCallback((face: ViewCubeFace) => {
     const state = threeRef.current;
     if (!state) {
       return;
     }
+    const before = viewBeforeLockRef.current;
+    if (viewLockedRef.current && viewLockFaceRef.current === face) {
+      // Pressed again: back to the view from before.
+      leaveLockedView();
+      return;
+    }
+    const kept = viewLockedRef.current ? before : {
+      position: state.camera.position.clone(),
+      target: state.controls.target.clone(),
+      zoom: state.camera.zoom,
+      orthographic: state.camera instanceof THREE.OrthographicCamera,
+    };
     setCameraToViewFace(state, face);
     syncViewCube(state, viewCubeRef.current);
-  }, []);
+    lockView(true);
+    viewLockFaceRef.current = face;
+    viewBeforeLockRef.current = kept;
+  }, [leaveLockedView, lockView]);
+
+  // Esc goes back from a locked view before anything else it does, so the selection stays (the SpaceMouse's Esc
+  // button sends the same key). It listens first, ahead of the editor's own Escape; a drag still takes it.
+  useEffect(() => {
+    if (!viewLocked) return;
+    const onKeyDown = (event: KeyboardEvent) => {
+      if (event.key !== "Escape" || escapeWasHandled(event)) return;
+      if (transformRef.current || dragRef.current || marqueeRef.current) return;
+      const target = event.target instanceof HTMLElement ? event.target : null;
+      if (target?.closest("input, textarea, select, [contenteditable='true'], [role='dialog']")) return;
+      event.preventDefault();
+      markEscapeHandled(event);
+      leaveLockedView();
+    };
+    window.addEventListener("keydown", onKeyDown, true);
+    return () => window.removeEventListener("keydown", onKeyDown, true);
+  }, [viewLocked, leaveLockedView]);
 
   // The bands along a face's sides and its corners look from that edge or corner (#202).
   const viewCubeZones = (face: ViewCubeFace) => VIEW_CUBE_ZONES.map(([column, row]) => (
@@ -8184,6 +8268,7 @@ export function WorkplaneViewport({
         event.stopPropagation();
         const state = threeRef.current;
         if (!state) return;
+        lockView(false);
         setCameraToViewDirection(state, viewCubeZoneDirection(face, column, row));
         syncViewCube(state, viewCubeRef.current);
       }}
@@ -8213,6 +8298,7 @@ export function WorkplaneViewport({
       // lands on the face button underneath.
       capturePointer(event.currentTarget, event.pointerId);
       setViewCubeDragging(true);
+      lockView(false);
     }
     const state = threeRef.current;
     if (!state) {
@@ -8220,7 +8306,7 @@ export function WorkplaneViewport({
     }
     orbitCameraByDrag(state, move.dx, move.dy);
     syncViewCube(state, viewCubeRef.current);
-  }, []);
+  }, [lockView]);
 
   const endViewCubeDrag = useCallback((event: ReactPointerEvent<HTMLDivElement>) => {
     const drag = viewCubeDragRef.current;
@@ -8274,6 +8360,8 @@ export function WorkplaneViewport({
       return;
     }
     toggleCameraProjection(state);
+    // Switched by hand: letting go of a held view leaves it as it is now.
+    viewLockFlattenedRef.current = false;
     // The button reads its state from the camera that is actually in the
     // scene, so the keyboard shortcut and the button can never disagree.
     setOrthographicView(state.camera instanceof THREE.OrthographicCamera);
@@ -8706,7 +8794,9 @@ export function WorkplaneViewport({
         event.preventDefault();
         return;
       }
-      if (event.key === "Escape" && (transformRef.current || dragRef.current || marqueeRef.current)) {
+      if (event.key === "Escape" && escapeWasHandled(event)) {
+        // Already used to let a locked view go.
+      } else if (event.key === "Escape" && (transformRef.current || dragRef.current || marqueeRef.current)) {
         event.preventDefault();
         markEscapeHandled(event);
         cancelActiveDragRef.current();
@@ -8844,6 +8934,11 @@ export function WorkplaneViewport({
           <button type="button" className="cube-face cube-left" aria-label={t("view.left")} aria-keyshortcuts="3" title={t("camera.shortcut", { label: t("view.left"), keys: "3" })} onClick={() => setViewCubeFace("left")}>{t("view.leftShort")}{viewCubeZones("left")}</button>
         </div>
       </div>
+      {viewLocked ? (
+        <button type="button" className="view-lock-badge" aria-label={t("view.unlock")} aria-keyshortcuts="Escape" title={t("view.unlock")} onClick={leaveLockedView}>
+          <Lock size={14} strokeWidth={2.4} aria-hidden="true" />
+        </button>
+      ) : null}
 
       <div className={`camera-controls ${cameraControlsCollapsed ? "collapsed" : ""}`} aria-label={t("camera.controls")} data-help-section="cameraBar">
         {cameraControlsCollapsed ? (

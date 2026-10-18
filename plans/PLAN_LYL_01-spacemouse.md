@@ -180,3 +180,77 @@ route depends on what it shows.
   registered is moved), so the cap turns both halves together; closing it gives the cap back to the workplane.
   Hit tests and model box use the original mesh; no pivot marker there. Other renderers checked: the revolve
   preview is a still picture with no controls, and `myShapeThumbnail` draws icons off-screen, so neither needs it.
+  Committed 35bbde58, merged into my-mod, image built and running on the server. Waits on Adrian to try it.
+
+## Two issues from Adrian's try (2026-10-18)
+
+1. **Standard views don't stay locked.** A view button (Top, Front, Left...) only jumps the camera there; the next
+   touch of the cap turns the view away again (Bambu Studio does the same). That makes lining parts up hard.
+   Wanted: a view that stays put until he lets it go. Possible hook: navlib's `view.rotatable` (false = 3DxWare
+   should not turn the view), plus dropping any turn in `applyAffine` while locked (pan and zoom still work).
+   How the lock is released is Adrian's call (asked 2026-10-18).
+2. **The cap tilts over the top.** With the mouse, tilting to look straight down stops at the top. With the cap,
+   it goes past the top and the whole view spins round, so you come down on the back. Cause: `applyAffine`
+   (`apps/web/src/lib/navlibCamera.ts`) takes 3DxWare's camera as is, then `lookAt` with "up" at the top flips it
+   once the camera is upside down. Fix: stop the tilt just short of straight down or up, as the orbit controls do.
+
+**Adrian's answers on the lock (2026-10-18):** it must work for everyone, not only SpaceMouse users: a view
+button locks turning for the mouse too. **Esc** leaves the lock (the SpaceMouse's Esc button sends Esc through
+3DxWare, so it does too). Show a small lock badge by the view cube while locked.
+
+**Upstream PRs (Adrian, 2026-10-18):** he wants to send this work to henmedia/layerling as PRs. Proposed: one PR
+for SpaceMouse support (`spacemouse` + `spacemouse-simplify` + `orbit-fix`, squashed onto the latest
+`upstream/main`, without `plans/` and without the fork-image workflow), and the view lock as a second PR.
+Upstream was 40 commits ahead of `main` on 2026-10-18. Waits on his OK before anything is pushed or opened.
+Order (Adrian, 2026-10-18): build and finish the view lock first, on branch `view-lock`; once it works, push both PRs.
+The lock PR changes SpaceMouse code that is not upstream yet, so `view-lock` is built on top of `orbit-fix` and
+its PR goes up after (or stacked on) the SpaceMouse PR.
+
+### View lock: built on `view-lock` (2026-10-18), not yet tried by Adrian
+
+- A view button, keys 1–6 or a SpaceMouse view command locks turning (`lockView` in `WorkplaneViewport.tsx`):
+  the orbit controls' `enableRotate` goes off, and 3DxWare is told `view.rotatable` = false; any turn it still
+  sends is taken back about its pivot (`navlibCamera.ts`), so the cap only pans and zooms. F (fit) keeps the lock.
+- Let go by: Esc (a capture-phase listener that runs before the editor's, so the selection stays; a drag in
+  progress still takes Esc first), the house button, a view cube edge or corner, a drag on the view cube, the
+  badge, or the MCP orbit tool. Another view button moves the lock to that side.
+- Badge: a round lock button right of the view cube (`.view-lock-badge`, light and dark); words `view.unlock` in
+  en, de, fr, nl, cs, ru, sl. Graphite theme rebuilt.
+- Tests: 2 new unit tests (held view only pans and zooms; a held top view keeps its heading). Type check clean;
+  full suite passes except the known `useRememberedFlag` failures.
+- Not checked in a browser: the browser tool can't open the 3D editor (no WebGL). Waits on Adrian to try it in
+  Firefox: mouse orbit locked after Top/Front, Esc and badge unlock, cap pans/zooms but doesn't turn while locked.
+- Open: Esc unlocks before it puts down a tool or leaves a mode (tape, section, workplane); say if that is wrong.
+  No guide page or shortcuts-list entry yet.
+
+### Adrian's try of the lock (2026-10-18): lock works; three findings
+
+1. **3DxWare's own Top/Right/Front buttons** moved the view but did not lock it (his remapped buttons to
+   Layerling's view commands did). Now: a camera 3DxWare sets exactly square to a side, from a view that was not
+   already that side, is taken as Layerling's view button for that side (`squareView`), so it locks too.
+2. **The orbit fix did not work.** The flip near straight down was not the camera passing over the top: there a
+   twist moves the line of sight sideways across the top, and turning "up" back to the top made that a big swing
+   of the heading, frame by frame. Now (`mouseLikeTurn` in `navlibCamera.ts`) the cap turns the view as the mouse
+   does: the twist spins round the vertical, the tilt changes the angle and stops just short of straight down or
+   up, roll is dropped; 3DxWare's pan and zoom are kept as they were on the screen. A test shows the old code
+   drifting off; the new one holds. This replaces the `orbit-fix` commit's approach; the SpaceMouse PR should
+   carry the new code.
+3. **Zoom stops short in a locked view.** Cause not proven. Tried: 3DxWare is no longer told the view can't turn
+   (`view.rotatable` stays true; the lock takes the turn back itself). Asked Adrian whether it was the cap or the
+   wheel, and whether it still happens.
+
+**Adrian's retest (2026-10-18):** the orbit fix works (the cap stops at the top). The lock is not yet what he
+wants: Front and Right still show perspective (parallax), so they are not straight-on 2D views. Next: a view
+button also switches to the flat (orthographic) view while locked; letting go puts back the view he had.
+Built: `lockView` switches a perspective view to flat as it locks and back as it lets go; pressing O by hand while
+locked means letting go leaves the projection alone. Waits on Adrian's try. Watch: the flat view zooms by its own
+zoom range (`orthographicZoomRange`), which may be where a zoom now stops.
+
+**Asked (Adrian, 2026-10-18):** pressing a view button (Top, Front, Right) a second time undoes it: back to the 3D
+view he had before the lock. Built for every view button (cube, keys 1–6, Layerling's commands, 3DxWare's own).
+Esc and the badge still only let go where the view is.
+Adrian (2026-10-18): Esc "only says selection cleared". In headless Chromium (SwiftShader, `.scratch/esc-check.mjs`)
+Esc did unlock, but left the camera on the side, so likely nothing seemed to happen and a second Esc cleared the
+selection. Now Esc, the badge and the same view button again all go back to the 3D view from before the lock
+(`leaveLockedView`); checked in that browser: Front then Esc, Front twice, Left then Top then the badge all land on
+the starting view, selection kept. Adrian said Esc may be dropped if it is a hassle; kept, as it works.

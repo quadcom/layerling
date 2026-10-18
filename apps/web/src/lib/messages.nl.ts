@@ -2070,6 +2070,7 @@ export const MESSAGES_NL: Record<MessageKey, string> = {
   "view.left": "Linkeraanzicht",
   "view.topShort": "BOVEN",
   "view.bottomShort": "ONDER",
+  "view.unlock": "Draaien is vergrendeld op dit aanzicht. Druk op Esc of klik hier om weer te draaien.",
   "view.frontShort": "VOOR",
   "view.backShort": "ACHTER",
   "view.rightShort": "RECHTS",

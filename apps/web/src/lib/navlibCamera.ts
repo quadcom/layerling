@@ -6,12 +6,12 @@ import type { NavlibModel } from "@/lib/navlib";
  * testing, in the world's own coordinates. Layerling and 3DxWare agree on them: y up, and the front camera looks
  * down -z, so the coordinate system and the front view are both the identity.
  *
- * 3DxWare hands back whole camera matrices. The view keeps its up at the top (the orbit controls do), so a roll
+ * 3DxWare hands back whole camera matrices. The view turns as the mouse turns it (see `mouseLikeTurn`), so a roll
  * of the cap is dropped, and the orbit target is kept on the camera's line of sight: at the depth 3DxWare names
  * as its target, or else at the depth the old target lies at, so a push forward comes closer to it. Once that is
  * nearly as close as the view may come, the target moves on to what lies ahead, as the wheel does: the zoom goes
  * right up to the model. Carrying the target along instead ran it off the plate, and the plate's limit on the
- * target then held the camera back.
+ * target then held the camera back. While a view button holds the view to its side, 3DxWare only pans and zooms.
  */
 export type NavlibCameraHost = {
   camera(): THREE.PerspectiveCamera | THREE.OrthographicCamera;
@@ -20,6 +20,10 @@ export type NavlibCameraHost = {
   zoomRange(): { min: number; max: number };
   /** How close the normal view may come to its target. */
   minDistance(): number;
+  /** The view is held to one side: 3DxWare may pan and zoom it, not turn it. */
+  locked?(): boolean;
+  /** 3DxWare's own view button for a side was pressed: do what the view button of that side does. */
+  squareView?(face: NavlibViewFace): void;
   modelBox(): THREE.Box3 | null;
   selectionBox(): THREE.Box3 | null;
   /** The nearest point of the model (or of the selection) on a ray, or null. */
@@ -47,10 +51,55 @@ function isMatrix(value: unknown): value is number[] {
   return Array.isArray(value) && value.length === 16 && value.every((entry) => typeof entry === "number" && Number.isFinite(entry));
 }
 
+/** How close to straight down or straight up the view may tilt, as `layerlingOrbitView` allows. */
+const TILT_LIMIT = 1e-3;
+const WORLD_UP = Object.freeze(new THREE.Vector3(0, 1, 0));
+
+/** The side a camera looks from, when 3DxWare set it square to one (its own Top, Front, Right... buttons). */
+export type NavlibViewFace = "top" | "bottom" | "front" | "back" | "right" | "left";
+
+function squareFace(rotation: THREE.Quaternion): NavlibViewFace | null {
+  const back = new THREE.Vector3(0, 0, 1).applyQuaternion(rotation);
+  const right = new THREE.Vector3(1, 0, 0).applyQuaternion(rotation);
+  const square = (vector: THREE.Vector3) => [vector.x, vector.y, vector.z].filter((entry) => Math.abs(Math.abs(entry) - 1) < 1e-5).length === 1;
+  if (!square(back) || !square(right)) return null;
+  if (back.y > 0.5) return "top";
+  if (back.y < -0.5) return "bottom";
+  if (back.z > 0.5) return "front";
+  if (back.z < -0.5) return "back";
+  return back.x > 0 ? "right" : "left";
+}
+
+/**
+ * The turn the view takes for the one 3DxWare sent (`sent`, from the camera as it was, `before`), the way the
+ * mouse turns it: round the vertical and up or down, never past straight down or up, never rolled. Taking
+ * 3DxWare's camera as it is and turning "up" back to the top swung the view round near straight down: there a
+ * small sideways move of the line of sight is a large change of heading, so the view spun round and came down on
+ * the back. The twist counts the same whether 3DxWare turned it about the screen's up or the world's.
+ */
+function mouseLikeTurn(before: THREE.Quaternion, sent: THREE.Quaternion) {
+  const turn = sent.w < 0 ? new THREE.Quaternion(-sent.x, -sent.y, -sent.z, -sent.w) : sent.clone();
+  const half = Math.acos(Math.min(1, turn.w));
+  const sine = Math.sin(half);
+  const axis = new THREE.Vector3(turn.x, turn.y, turn.z).multiplyScalar(sine > 1e-9 ? (2 * half) / sine : 2);
+  const right = new THREE.Vector3(1, 0, 0).applyQuaternion(before);
+  const up = new THREE.Vector3(0, 1, 0).applyQuaternion(before);
+  const polar = Math.acos(THREE.MathUtils.clamp(new THREE.Vector3(0, 0, 1).applyQuaternion(before).y, -1, 1));
+  // In the plane of the screen's up and the world's, the one direction that reads a twist about either as itself.
+  const around = axis.dot(up.clone().add(WORLD_UP)) / (1 + Math.sin(polar));
+  const tilt = THREE.MathUtils.clamp(polar + axis.dot(right), TILT_LIMIT, Math.PI - TILT_LIMIT) - polar;
+  const spin = new THREE.Quaternion().setFromAxisAngle(WORLD_UP, around);
+  const level = new THREE.Vector3(right.x, 0, right.z);
+  if (level.lengthSq() < 1e-12) level.set(1, 0, 0);
+  return new THREE.Quaternion().setFromAxisAngle(level.normalize().applyQuaternion(spin), tilt).multiply(spin);
+}
+
 export function createNavlibCameraModel(host: NavlibCameraHost): NavlibModel {
   const hit = { from: new THREE.Vector3(), direction: new THREE.Vector3(0, 0, -1), selectionOnly: false };
   let pendingTarget: THREE.Vector3 | null = null;
   let pivot: THREE.Vector3 | null = null;
+  let inMotion = false;
+  let motionEnded = -Infinity;
 
   const fallbackBox = () => new THREE.Box3(new THREE.Vector3(-50, 0, -50), new THREE.Vector3(50, 50, 50));
 
@@ -84,6 +133,8 @@ export function createNavlibCameraModel(host: NavlibCameraHost): NavlibModel {
       case "view.target":
         return host.target().toArray();
       case "view.rotatable":
+        // Also while a view button holds the view, which takes back the turn itself: a view 3DxWare may not turn
+        // it may zoom differently, and the zoom in a held view stopped short of the model.
         return true;
       case "view.constructionPlane":
       case "model.floorPlane":
@@ -128,7 +179,28 @@ export function createNavlibCameraModel(host: NavlibCameraHost): NavlibModel {
     const position = new THREE.Vector3();
     const rotation = new THREE.Quaternion();
     new THREE.Matrix4().fromArray(matrix).decompose(position, rotation, new THREE.Vector3());
-    const forward = new THREE.Vector3(0, 0, -1).applyQuaternion(rotation).normalize();
+    const before = camera.quaternion.clone();
+    // 3DxWare's own view buttons set the camera square to a side: that is the view button of the same name. Away
+    // from a motion of the cap it is one, pressed again too; within one, or just after it (a last frame), only a
+    // move onto a side that it was not square to already (a pan in a square view stays square).
+    const face = squareFace(rotation);
+    const pressed = !inMotion && performance.now() - motionEnded > 300;
+    if (face && host.squareView && (pressed || face !== squareFace(before))) {
+      host.squareView(face);
+      return;
+    }
+    // 3DxWare turned its camera about the pivot and moved it; the move is kept as it is, the turn is the mouse's
+    // (none while a view button holds the view to its side).
+    const sent = rotation.clone().multiply(before.clone().invert());
+    const about = (pivot ?? target).clone();
+    const turnedOnly = camera.position.clone().sub(about).applyQuaternion(sent).add(about);
+    const moved = position.clone().sub(turnedOnly);
+    const turn = host.locked?.() ? new THREE.Quaternion() : mouseLikeTurn(before, sent);
+    const orientation = turn.clone().multiply(before);
+    // The move goes the same way on the screen: to the right is to the right of the view as it is turned now.
+    moved.applyQuaternion(rotation.clone().invert()).applyQuaternion(orientation);
+    position.copy(camera.position).sub(about).applyQuaternion(turn).add(about).add(moved);
+    const forward = new THREE.Vector3(0, 0, -1).applyQuaternion(orientation).normalize();
     const depthOf = (point: THREE.Vector3) => point.clone().sub(position).dot(forward);
     const closest = host.minDistance();
     let depth = pendingTarget && depthOf(pendingTarget) > 1e-6 ? depthOf(pendingTarget) : depthOf(target);
@@ -144,7 +216,8 @@ export function createNavlibCameraModel(host: NavlibCameraHost): NavlibModel {
     target.copy(position).addScaledVector(forward, depth);
     camera.position.copy(position);
     camera.up.set(0, 1, 0);
-    camera.lookAt(target);
+    // Set, not looked at: straight down has no heading of its own for lookAt to find.
+    camera.quaternion.copy(orientation);
     camera.updateMatrixWorld();
     host.changed();
   };
@@ -199,6 +272,8 @@ export function createNavlibCameraModel(host: NavlibCameraHost): NavlibModel {
         if (typeof value === "number" && value > 0) pendingTarget = null;
         return true;
       case "motion":
+        if (inMotion && value !== true) motionEnded = performance.now();
+        inMotion = value === true;
         if (value !== true) pendingTarget = null;
         host.moving(value === true);
         return true;
