@@ -649,7 +649,13 @@ type DragState = {
   /** World footprint of the dragged shapes at the start, when snapping to other shapes is on. */
   snapMoving?: SnapBox | null;
   snapTargets?: SnapBox[];
+  /** What the mouse wheel has added to the move, in millimetres; kept until the drag lets go. */
+  wheelNudge?: number;
+  lastPointer?: DragPointer;
 };
+
+/** The pointer as a drag last saw it, so a turn of the wheel can work the drag out again without a move. */
+type DragPointer = { clientX: number; clientY: number; shiftKey: boolean; altKey: boolean };
 
 
 type MoveDimensionOverlayState = MoveDimensionOverlayData & {
@@ -747,6 +753,9 @@ type TransformDragState = {
   rotationWheelSnapDegrees?: number;
   wheelCenter?: RotationWheelView;
   hasMoved?: boolean;
+  /** What the mouse wheel has added: millimetres for a size or lift, degrees for a turn; kept until the drag lets go. */
+  wheelNudge?: number;
+  lastPointer?: DragPointer;
 };
 
 type TransformDragItem = {
@@ -2628,6 +2637,7 @@ function resizeShapeFromFrameHandle(
   altKey: boolean,
   step: number,
   maxSize: number,
+  nudge = 0,
 ): Partial<WorkplaneShape> {
   const shape = transform.startShape;
   const frame = transform.selectionFrame;
@@ -2637,13 +2647,14 @@ function resizeShapeFromFrameHandle(
 
   const signs = transform.scaleSigns ?? resizeSignsForHandle(handleKey);
   // A handle dragged past the opposite side keeps growing there, as in Tinkercad: the size is the
-  // distance from that side and the body stands on the other side of it.
+  // distance from that side and the body stands on the other side of it. The wheel's fine step
+  // goes on after the grid.
   const axisResize = (current: number, delta: number, sign: number) => {
     if (!sign) {
       return { size: current, flipped: false };
     }
     const raw = current + sign * delta * (altKey ? 2 : 1);
-    return { size: snapDimension(Math.abs(raw), step, MIN_SHAPE_SIZE, maxSize), flipped: raw < 0 && !altKey };
+    return { size: clamp(snapDimension(Math.abs(raw), step, MIN_SHAPE_SIZE, maxSize) + nudge, MIN_SHAPE_SIZE, maxSize), flipped: raw < 0 && !altKey };
   };
 
   const resizedX = axisResize(width, localDelta.x, signs.x);
@@ -2669,6 +2680,11 @@ function resizeShapeFromFrameHandle(
     const limitedScale = clamp(scale, MIN_SHAPE_SIZE / Math.max(MIN_SHAPE_SIZE, Math.min(width, depth)), maxSize / Math.max(width, depth));
     nextWidth = snapDimension(width * limitedScale, step, MIN_SHAPE_SIZE, maxSize);
     nextDepth = snapDimension(depth * limitedScale, step, MIN_SHAPE_SIZE, maxSize);
+    if (nudge) {
+      const grown = clamp(nextWidth + nudge, MIN_SHAPE_SIZE, maxSize) / Math.max(MIN_SHAPE_SIZE, nextWidth);
+      nextWidth *= grown;
+      nextDepth *= grown;
+    }
     uniformScale = nextWidth / Math.max(MIN_SHAPE_SIZE, width);
     // Past the opposite corner both sides cross together.
     flipX = flipZ = flipX || flipZ;
@@ -2899,22 +2915,23 @@ function resizeSelectionFromHandle(
   altKey: boolean,
   step: number,
   maxSize: number,
+  nudge = 0,
 ) {
   const frame = transform.selectionFrame;
   const localDelta = transform.scaleStartPoint ? frameLocalDelta(frame, transform.scaleStartPoint, point) : new THREE.Vector3();
   const signs = transform.scaleSigns ?? resizeSignsForHandle(handleKey);
   // Past the opposite side the selection keeps growing there, mirrored: its scale is negative then
-  // and the bodies in it change sides with it.
+  // and the bodies in it change sides with it. The wheel's fine step goes on after the grid.
   const axisResize = (current: number, delta: number, sign: number) => {
     if (!sign) {
       return { size: current, scale: 1, flipped: false };
     }
     if (altKey) {
-      const size = snapDimension(Math.abs(current + sign * delta * 2), step, MIN_SHAPE_SIZE, maxSize);
+      const size = clamp(snapDimension(Math.abs(current + sign * delta * 2), step, MIN_SHAPE_SIZE, maxSize) + nudge, MIN_SHAPE_SIZE, maxSize);
       return { size, scale: size / Math.max(MIN_SHAPE_SIZE, current), flipped: false };
     }
     const rawSize = current + sign * delta;
-    const size = snapDimension(Math.abs(rawSize), step, MIN_SHAPE_SIZE, maxSize);
+    const size = clamp(snapDimension(Math.abs(rawSize), step, MIN_SHAPE_SIZE, maxSize) + nudge, MIN_SHAPE_SIZE, maxSize);
     const flipped = rawSize < 0;
     return {
       size,
@@ -2929,8 +2946,10 @@ function resizeSelectionFromHandle(
   if (shiftKey && signs.x && signs.z) {
     const scale = proportionalResizeScale(frame.width, frame.depth, nextX.size, nextZ.size);
     const limitedScale = clamp(scale, MIN_SHAPE_SIZE / Math.max(MIN_SHAPE_SIZE, Math.min(frame.width, frame.depth)), maxSize / Math.max(frame.width, frame.depth));
-    const width = snapDimension(frame.width * limitedScale, step, MIN_SHAPE_SIZE, maxSize);
-    const depth = snapDimension(frame.depth * limitedScale, step, MIN_SHAPE_SIZE, maxSize);
+    const snappedWidth = snapDimension(frame.width * limitedScale, step, MIN_SHAPE_SIZE, maxSize);
+    const grown = nudge ? clamp(snappedWidth + nudge, MIN_SHAPE_SIZE, maxSize) / Math.max(MIN_SHAPE_SIZE, snappedWidth) : 1;
+    const width = snappedWidth * grown;
+    const depth = snapDimension(frame.depth * limitedScale, step, MIN_SHAPE_SIZE, maxSize) * grown;
     // Past the opposite corner both sides cross together.
     const flipped = nextX.flipped || nextZ.flipped;
     nextX = {
@@ -5529,6 +5548,8 @@ export function WorkplaneViewport({
       if (Math.hypot(clientX - transform.startClientX, clientY - transform.startClientY) > 3) {
         transform.hasMoved = true;
       }
+      transform.lastPointer = { clientX, clientY, shiftKey, altKey };
+      const nudge = transform.wheelNudge ?? 0;
 
       const step = snapStep(snapRef.current);
       if (transform.kind === "height") {
@@ -5548,9 +5569,11 @@ export function WorkplaneViewport({
         const upright = transform.selectionFrame.yAxis.clone().normalize().dot(startLift.axis) > 0.9999;
         // Dragged past the other face the height goes negative: the body then stands on the other side of
         // that face, which stays where it is (resizeShapeAlongFrameNormal).
-        const snappedHeight = upright
+        const gridHeight = upright
           ? heightWithFaceOnGrid(startLift.low, transform.selectionFrame.height, rawFrameHeight, resizingFromBottom, step)
           : transform.selectionFrame.height + snapValue(rawFrameHeight - transform.selectionFrame.height, step);
+        // The wheel makes it taller, or deeper past the other face.
+        const snappedHeight = gridHeight + (gridHeight < 0 ? -nudge : nudge);
         const nextFrameHeight = clamp(
           Math.abs(snappedHeight) < MIN_SHAPE_SIZE ? MIN_SHAPE_SIZE : snappedHeight,
           -maxHeight,
@@ -5575,7 +5598,7 @@ export function WorkplaneViewport({
           ? currentPoint.clone().sub(transform.liftStartPoint).dot(axis)
           : 0;
         // The bottom lands on the grid of the workplane, not a step from where it stood.
-        const delta = liftDeltaOnGrid(liftGeometryForFrame(transform.selectionFrame, placementWorkplaneRef.current).low, rawDelta, step);
+        const delta = liftDeltaOnGrid(liftGeometryForFrame(transform.selectionFrame, placementWorkplaneRef.current).low, rawDelta, step) + nudge;
         transform.items.forEach((item) => {
           const nextCenter = item.startCenter.clone().addScaledVector(axis, delta);
           onUpdateShape(item.id, {
@@ -5606,11 +5629,11 @@ export function WorkplaneViewport({
         }
         if (transform.items.length === 1) {
           const maxSize = handleDimensionLimit(workspaceRef.current, transform.startShape.kind, 220, "across", Math.max(transform.selectionFrame.width, transform.selectionFrame.depth, transform.selectionFrame.height));
-          const next = resizeShapeFromFrameHandle(transform, worldPoint, transform.handleKey, shiftKey || proportionLockRef.current, altKey, step, maxSize);
+          const next = resizeShapeFromFrameHandle(transform, worldPoint, transform.handleKey, shiftKey || proportionLockRef.current, altKey, step, maxSize, nudge);
           onUpdateShape(transform.id, next);
         } else {
           const maxSize = Math.max(...transform.items.map((item) => handleDimensionLimit(workspaceRef.current, item.startShape.kind, 260, "across", Math.max(transform.selectionFrame.width, transform.selectionFrame.depth, transform.selectionFrame.height))));
-          resizeSelectionFromHandle(transform, worldPoint, transform.handleKey, shiftKey || proportionLockRef.current, altKey, step, maxSize).forEach(({ id, patch }) => onUpdateShape(id, patch));
+          resizeSelectionFromHandle(transform, worldPoint, transform.handleKey, shiftKey || proportionLockRef.current, altKey, step, maxSize, nudge).forEach(({ id, patch }) => onUpdateShape(id, patch));
         }
         return true;
       }
@@ -5679,7 +5702,7 @@ export function WorkplaneViewport({
         transform.rotationWheelAppliedDelta = undefined;
         transform.rotationWheelAppliedPointerAngle = undefined;
       }
-      const delta = wheelRotation?.delta ?? snappedRotationDelta(rawDelta, false, shiftKey);
+      const delta = (wheelRotation?.delta ?? snappedRotationDelta(rawDelta, false, shiftKey)) + nudge;
 
       const deltaQuaternion = new THREE.Quaternion().setFromAxisAngle(axisVector, THREE.MathUtils.degToRad(delta));
       const rotationDelta = deltaQuaternion.clone();
@@ -7530,6 +7553,17 @@ export function WorkplaneViewport({
         }
         syncObjectSnapGuides(state, guides, drag.workplane.origin.y + 0.06);
       }
+      drag.lastPointer = { clientX: event.clientX, clientY: event.clientY, shiftKey: event.shiftKey, altKey: event.altKey };
+      // The wheel's fine step goes on after the grid and the snapping, along the axis the move follows more.
+      if (drag.wheelNudge) {
+        const along = dragAxisLock(drag.workplane, deltaX, deltaY, deltaZ);
+        const axis = along.along === "x" ? drag.workplane.xAxis : drag.workplane.zAxis;
+        const travelled = along.delta.x * axis.x + along.delta.y * axis.y + along.delta.z * axis.z;
+        const nudge = (travelled < 0 ? -1 : 1) * drag.wheelNudge;
+        deltaX += axis.x * nudge;
+        deltaY += axis.y * nudge;
+        deltaZ += axis.z * nudge;
+      }
       const moveDimensionSession = moveDimensionSessionRef.current;
       if (moveDimensionSession) {
         moveDimensionSession.deltaX = deltaX;
@@ -7573,6 +7607,38 @@ export function WorkplaneViewport({
     },
     [pickPlacementSurface, setMarqueeFromState, toPlacementWorkplanePoint, toRawPlanePoint, moveCruiseGhost, updateModifierEdgeHover, updateTapeHover, updateTransform],
   );
+
+  // The mouse wheel while a handle or a body is held fine-tunes the drag instead of zooming: a step a notch
+  // (0.01 mm or 0.1 degrees unless set otherwise), ten with Shift, a tenth with Ctrl, a hundredth with Alt.
+  // Caught on the window before the camera or a panel sees it; the drag is then worked out again where the
+  // pointer last was.
+  const wheelDragMoveRef = useRef({ handlePointerMove, updateTransform });
+  wheelDragMoveRef.current = { handlePointerMove, updateTransform };
+  useEffect(() => {
+    const onWheel = (event: WheelEvent) => {
+      const transform = transformRef.current;
+      const drag = transform ? null : dragRef.current;
+      if (!transform && !drag?.started) return;
+      event.preventDefault();
+      event.stopPropagation();
+      const turn = wheelTurn(event);
+      if (turn === 0) return;
+      const { dragStep, turnStep } = currentWheelSettings();
+      const keys = { shift: event.shiftKey, ctrl: event.ctrlKey, alt: event.altKey };
+      if (transform) {
+        const pointer = transform.lastPointer ?? { clientX: transform.startClientX, clientY: transform.startClientY, shiftKey: false, altKey: false };
+        transform.wheelNudge = wheelNudgeAfterTurn(transform.wheelNudge ?? 0, turn, transform.kind === "rotate" ? turnStep : dragStep, keys);
+        transform.hasMoved = true;
+        wheelDragMoveRef.current.updateTransform(pointer.clientX, pointer.clientY, pointer.shiftKey, pointer.altKey);
+        if (threeRef.current) threeRef.current.needsRender = true;
+      } else if (drag?.lastPointer) {
+        drag.wheelNudge = wheelNudgeAfterTurn(drag.wheelNudge ?? 0, turn, dragStep, keys);
+        wheelDragMoveRef.current.handlePointerMove({ ...drag.lastPointer, pointerId: drag.pointerId, buttons: 1 } as unknown as ReactPointerEvent<HTMLDivElement>);
+      }
+    };
+    window.addEventListener("wheel", onWheel, { capture: true, passive: false });
+    return () => window.removeEventListener("wheel", onWheel, { capture: true });
+  }, []);
 
   useEffect(() => {
     if (typeof window === "undefined" || !window.matchMedia) return;
