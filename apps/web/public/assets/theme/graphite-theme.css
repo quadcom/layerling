@@ -2440,6 +2440,36 @@ html[data-theme="dark"]:where([data-palette="graphite"]) .visibility-hidden-badg
   box-shadow: 0 1px 3px rgba(25, 64, 43, 0.2);
 }
 
+:where(html[data-theme="dark"][data-palette="graphite"]) .axis-lock-badge {
+  color: #333333;
+  background: rgba(255, 255, 255, 0.96);
+  border: 1px solid var(--axis-lock-color);
+  box-shadow: 0 1px 3px rgba(61, 61, 61, 0.18);
+}
+
+:where(html[data-theme="dark"][data-palette="graphite"]) .axis-lock-badge.axis-x,
+:where(html[data-theme="dark"][data-palette="graphite"]) .sketch-axis-lock-line.axis-x {
+  --axis-lock-color: #e5484d;
+}
+
+:where(html[data-theme="dark"][data-palette="graphite"]) .axis-lock-badge.axis-y,
+:where(html[data-theme="dark"][data-palette="graphite"]) .sketch-axis-lock-line.axis-y {
+  --axis-lock-color: #3fae5a;
+}
+
+:where(html[data-theme="dark"][data-palette="graphite"]) .axis-lock-badge.axis-z {
+  --axis-lock-color: #3b82f6;
+}
+
+html[data-theme="dark"]:where([data-palette="graphite"]) .axis-lock-badge {
+  color: #e7e7e7;
+  background: rgba(36, 36, 36, 0.96);
+}
+
+:where(html[data-theme="dark"][data-palette="graphite"]) .sketch-axis-lock-line {
+  stroke: var(--axis-lock-color);
+}
+
 :where(html[data-theme="dark"][data-palette="graphite"]) .sketch-revolve-preview {
   background: rgba(238, 238, 238, 0.96);
   border: 1px solid rgba(185, 185, 185, 0.9);
