@@ -788,6 +788,7 @@ export const MESSAGES_AR: Partial<Record<MessageKey, string>> = {
   "transform.height": "الارتفاع",
   "transform.lift": "رفع",
   "sketch.modeBadge": "عرض الرسم التخطيطي",
+  "axisLock.badge": "Locked to {axis} - press {axis} again to free it",
   "sketch.modeBadgeRevolve": "رسم تخطيطي للدوران",
   "status.sketchUpdated": "تم تحديث الرسم التخطيطي",
   "status.revolveCreated": "تم إنشاء جسم دوراني من الرسم التخطيطي",

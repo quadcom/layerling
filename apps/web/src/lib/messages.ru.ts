@@ -776,6 +776,7 @@ export const MESSAGES_RU: Partial<Record<MessageKey, string>> = {
   "transform.height": "Высота",
   "transform.lift": "Подъём",
   "sketch.modeBadge": "Вид эскиза",
+  "axisLock.badge": "Locked to {axis} - press {axis} again to free it",
   "sketch.modeBadgeRevolve": "Эскиз вращения",
   "status.sketchUpdated": "Эскиз обновлён",
   "status.sketchRebuildFailed": "Тело эскиза не удалось пересобрать в этом размере. Фаска и скругление снова заработают на нём после правки эскиза.",

@@ -28,6 +28,7 @@ import { calibrateImage, centreImage, cropImage, imageAngleTo, imageCorners, ima
 import { DEFAULT_SKETCH_STROKE, SKETCH_STROKE_ALIGNS, SKETCH_STROKE_CAPS, SKETCH_STROKE_JOINS } from "@/lib/sketchStroke";
 import { selectWholeValue } from "@/lib/numberField";
 import { GuideHelpLink } from "@/components/GuideHelpLink";
+import { axisLockForKey, lockSketchPoint, toggleAxisLock, type AxisLock } from "@/lib/axisLock";
 import { clampNudge, constrainToAxis, sketchSegmentDragPointIds, sketchSelectedPointIds, sketchSelectedSegmentIds, sketchSelectionMovePointIds, type SketchSelectableEntity, type SketchSelection } from "@/lib/sketchSelection";
 import { closedPathAt, closedPathRegions, cubicPoint, curveControls, isInsideEdges, orderedPaths, pathEdges, type DisplayPath, type PlaneEdge } from "@/lib/sketchPaths";
 import { capturePointer } from "@/lib/pointerCapture";
@@ -587,6 +588,7 @@ export function SketchWorkspace({
   const lastPointerRef = useRef<{ clientX: number; clientY: number } | null>(null);
   const [refinePreview, setRefinePreview] = useState<{ segmentId: string; placement: SketchSegmentPlacement } | null>(null);
   const [pointerAction, setPointerAction] = useState<PointerAction | null>(null);
+  const [axisLock, setAxisLock] = useState<AxisLock | null>(null);
   // The reference image's crop mode and calibration (#216): both belong to the selected image.
   const [cropMode, setCropMode] = useState(false);
   const [calibration, setCalibration] = useState<{ imageId: string; points: Array<{ x: number; z: number }> } | null>(null);
@@ -1007,6 +1009,12 @@ export function SketchWorkspace({
   // them (#194); dragging with Shift still keeps to one axis.
   const constrainDrawing = (origin: { x: number; z: number }, point: { x: number; z: number }) =>
     constrainToAngle(origin, point, 15, snapStep(snap));
+  // X or Y tapped while drawing or dragging holds the move to that axis, as in Blender, until the point is
+  // placed or the drag lets go; it wins over Shift.
+  const drawTowards = (origin: { x: number; z: number }, point: { x: number; z: number }, shiftKey: boolean, lock = axisLock) =>
+    lock ? lockSketchPoint(origin, point, lock) : shiftKey ? constrainDrawing(origin, point) : point;
+  const dragTowards = (origin: { x: number; z: number }, point: { x: number; z: number }, shiftKey: boolean, lock = axisLock) =>
+    lock ? lockSketchPoint(origin, point, lock) : shiftKey ? constrainToAxis(origin, point) : point;
 
   const pointFromEvent = (event: { clientX: number; clientY: number }) => {
     const local = unsnappedPointFromEvent(event);
@@ -1134,16 +1142,16 @@ export function SketchWorkspace({
     event.preventDefault();
     if (tool === "bezier") {
       capturePointer(event.currentTarget, event.pointerId);
-      const startPoint = event.shiftKey && activePoint ? constrainDrawing(activePoint, point) : point;
+      const startPoint = activePoint ? drawTowards(activePoint, point, event.shiftKey) : point;
       setPointerAction({ kind: "bezier", pointerId: event.pointerId, origin: startPoint, current: startPoint });
     } else if (tool === "select" || (tool === "erase" && onEraseMany)) {
       capturePointer(event.currentTarget, event.pointerId);
       setPointerAction({ kind: "marquee", pointerId: event.pointerId, origin: point, current: point, clientX: event.clientX, clientY: event.clientY });
     } else if (tool === "line" || tool === "smooth" || tool === "measure") {
-      const clickPoint = event.shiftKey && activePoint && ["line", "smooth"].includes(tool)
-        ? constrainDrawing(activePoint, point)
-        : event.shiftKey && pendingMeasurementStart && tool === "measure"
-        ? constrainDrawing(pendingMeasurementStart, point)
+      const clickPoint = activePoint && ["line", "smooth"].includes(tool)
+        ? drawTowards(activePoint, point, event.shiftKey)
+        : pendingMeasurementStart && tool === "measure"
+        ? drawTowards(pendingMeasurementStart, point, event.shiftKey)
         : point;
       onPlanePoint(clickPoint);
     }
@@ -1174,7 +1182,7 @@ export function SketchWorkspace({
         : !pointerAction && pendingMeasurementStart && tool === "measure"
         ? pendingMeasurementStart
         : null;
-    const hoverPoint = event.shiftKey && drawingOrigin && point ? constrainDrawing(drawingOrigin, point) : point;
+    const hoverPoint = drawingOrigin && point ? drawTowards(drawingOrigin, point, event.shiftKey) : point;
     setHover(hoverPoint);
     if (point && pointerAction) {
       // Shift held while a point, a line or a selection is being dragged keeps the
@@ -1187,7 +1195,7 @@ export function SketchWorkspace({
       const unsnapped = pointerAction.kind === "resize-selection" && pointerAction.grab ? unsnappedPointFromEvent(event) : null;
       const current = unsnapped && pointerAction.kind === "resize-selection" && pointerAction.grab
         ? resizePointerOnGrid(unsnapped, pointerAction.grab, snapStep(snap), workspace.width / 2, workspace.depth / 2)
-        : event.shiftKey && lockOrigin ? constrainToAxis(lockOrigin, point) : point;
+        : lockOrigin ? dragTowards(lockOrigin, point, event.shiftKey) : point;
       setPointerAction({
         ...pointerAction,
         current,
@@ -1358,25 +1366,29 @@ export function SketchWorkspace({
     return true;
   }, [focusBounds, workspace.depth, workspace.width]);
 
+  // A lock holds for one point or one drag: the next line starts free.
+  const axisLockScope = `${tool}|${activePoint ? `${activePoint.x},${activePoint.z}` : ""}|${pendingMeasurementStart ? `${pendingMeasurementStart.x},${pendingMeasurementStart.z}` : ""}|${pointerAction?.kind ?? ""}`;
+  useEffect(() => setAxisLock(null), [axisLockScope]);
+
   useEffect(() => {
-    const syncShiftConstrain = (shiftKey: boolean) => {
+    const drawingOrigin =
+      !pointerAction && activePoint && ["line", "bezier", "smooth"].includes(tool)
+        ? activePoint
+        : !pointerAction && pendingMeasurementStart && tool === "measure"
+        ? pendingMeasurementStart
+        : null;
+    const lockOrigin = pointerAction?.kind === "move-point" || pointerAction?.kind === "move-selection" || pointerAction?.kind === "bezier"
+      ? pointerAction.origin
+      : null;
+    const syncShiftConstrain = (shiftKey: boolean, lock = axisLock) => {
       if (!lastPointerRef.current) return;
       const point = pointFromEvent(lastPointerRef.current);
       if (!point) return;
-      const drawingOrigin =
-        !pointerAction && activePoint && ["line", "bezier", "smooth"].includes(tool)
-          ? activePoint
-          : !pointerAction && pendingMeasurementStart && tool === "measure"
-          ? pendingMeasurementStart
-          : null;
-      const hoverPoint = shiftKey && drawingOrigin ? constrainDrawing(drawingOrigin, point) : point;
+      const hoverPoint = drawingOrigin ? drawTowards(drawingOrigin, point, shiftKey, lock) : point;
       setHover(hoverPoint);
       if (pointerAction) {
-        const lockOrigin = pointerAction.kind === "move-point" || pointerAction.kind === "move-selection" || pointerAction.kind === "bezier"
-          ? pointerAction.origin
-          : null;
         if (lockOrigin) {
-          setPointerAction((prev) => prev ? { ...prev, current: shiftKey ? constrainToAxis(lockOrigin, point) : point } : null);
+          setPointerAction((prev) => prev ? { ...prev, current: dragTowards(lockOrigin, point, shiftKey, lock) } : null);
         } else if (pointerAction.kind === "resize-selection") {
           setPointerAction((prev) => prev?.kind === "resize-selection" ? { ...prev, proportional: shiftKey } : prev);
         }
@@ -1390,6 +1402,15 @@ export function SketchWorkspace({
       const target = event.target;
       if (target instanceof HTMLElement && (target.isContentEditable || ["INPUT", "TEXTAREA", "SELECT"].includes(target.tagName))) return;
       if (event.ctrlKey || event.metaKey || event.altKey) return;
+      const pressedAxis = axisLockForKey(event.key, false);
+      if (pressedAxis && (drawingOrigin || lockOrigin)) {
+        event.preventDefault();
+        if (event.repeat) return;
+        const nextLock = toggleAxisLock(axisLock, pressedAxis);
+        setAxisLock(nextLock);
+        syncShiftConstrain(event.shiftKey, nextLock);
+        return;
+      }
       if (activePoint && !pointerAction && (tool === "line" || tool === "smooth") && /^[0-9.,<]$/.test(event.key)) {
         event.preventDefault();
         const pointer = hoverRef.current;
@@ -1471,7 +1492,7 @@ export function SketchWorkspace({
       window.removeEventListener("keydown", handleKeyDown);
       window.removeEventListener("keyup", handleKeyUp);
     };
-  }, [activePoint, focusSelection, onMoveHandle, onSelectTool, onTransformPoints, onUpdateImage, pendingMeasurementStart, pointerAction, profile, resetView, selected, selectedHandle, snap, tool, workspace.depth, workspace.width, workspace.zoomSpeed]);
+  }, [activePoint, axisLock, focusSelection, onMoveHandle, onSelectTool, onTransformPoints, onUpdateImage, pendingMeasurementStart, pointerAction, profile, resetView, selected, selectedHandle, snap, tool, workspace.depth, workspace.width, workspace.zoomSpeed]);
 
   const beginEntityDrag = (event: ReactPointerEvent<SVGElement>, action: PointerAction) => {
     if (event.button !== 0) return;
@@ -1508,6 +1529,16 @@ export function SketchWorkspace({
     onPlanePoint(typedLineTarget);
   };
   const previewEnd = typedLineTarget ?? hover;
+  // Where the locked axis runs through: the point drawn from, or where the drag started.
+  const axisLockOrigin = !axisLock
+    ? null
+    : pointerAction?.kind === "move-point" || pointerAction?.kind === "move-selection" || pointerAction?.kind === "bezier"
+    ? pointerAction.origin
+    : !pointerAction && activePoint && ["line", "bezier", "smooth"].includes(tool)
+    ? activePoint
+    : !pointerAction && tool === "measure"
+    ? pendingMeasurementStart
+    : null;
   const previewLength = activePoint && previewEnd ? Math.hypot(previewEnd.x - activePoint.x, previewEnd.z - activePoint.z) : 0;
   const previewAngle = activePoint && previewEnd ? sketchLineAngle(activePoint, previewEnd) : 0;
   const previewLabel = `${formatDimension(previewLength, workspace.accuracy)}  ${Math.round(previewAngle * 10) / 10}°`;
@@ -1728,6 +1759,7 @@ export function SketchWorkspace({
   return (
     <main className="sketch-workspace-stage" style={sketchColorStyle}>
       <div className="sketch-mode-badge">{operation === "revolve" ? t("sketch.modeBadgeRevolve") : operation === "sweep" ? t("sketch.modeBadgeSweep") : t("sketch.modeBadge")}</div>
+      {axisLock && axisLockOrigin ? <div className={`axis-lock-badge axis-${axisLock}`} role="status">{t("axisLock.badge", { axis: axisLock.toUpperCase() })}</div> : null}
       {operation === "revolve" ? <SketchRevolvePreview positions={revolvePreviewPositions} /> : null}
       <div className="camera-controls sketch-camera-controls" aria-label={t("sketch.viewControls")} data-help-section="cameraBar">
         <button aria-label={t("sketch.resetView")} aria-keyshortcuts="Home" title={t("camera.shortcut", { label: t("sketch.resetView"), keys: "Home" })} onClick={resetView}><Home size={28} /></button>
@@ -2216,6 +2248,11 @@ export function SketchWorkspace({
               </g>
             );
           })() : null}
+          {axisLock && axisLockOrigin ? (
+            axisLock === "x"
+              ? <line className="sketch-axis-lock-line axis-x" x1={-workspace.width / 2} y1={axisLockOrigin.z} x2={workspace.width / 2} y2={axisLockOrigin.z} pointerEvents="none" />
+              : <line className="sketch-axis-lock-line axis-y" x1={axisLockOrigin.x} y1={-workspace.depth / 2} x2={axisLockOrigin.x} y2={workspace.depth / 2} pointerEvents="none" />
+          ) : null}
           {hover && hoverOnReference ? <circle className="sketch-reference-snap" cx={hover.x} cy={hover.z} r={7 * screenUnit} pointerEvents="none" /> : null}
           {activePoint && previewEnd && pointerAction?.kind !== "bezier" && ["line", "bezier", "smooth"].includes(tool) ? <line className="sketch-preview-line" x1={activePoint.x} y1={activePoint.z} x2={previewEnd.x} y2={previewEnd.z} pointerEvents="none" /> : null}
           {activePoint && pointerAction?.kind === "bezier" ? (() => {

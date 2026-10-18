@@ -743,6 +743,7 @@ export const MESSAGES_IT: Partial<Record<MessageKey, string>> = {
   "transform.height": "Altezza",
   "transform.lift": "Solleva",
   "sketch.modeBadge": "Vista schizzo",
+  "axisLock.badge": "Locked to {axis} - press {axis} again to free it",
   "sketch.modeBadgeRevolve": "Schizzo di rivoluzione",
   "status.sketchUpdated": "Schizzo aggiornato",
   "status.revolveCreated": "Schizzo di rivoluzione creato",

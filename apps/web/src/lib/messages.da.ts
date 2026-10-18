@@ -736,6 +736,7 @@ export const MESSAGES_DA: Partial<Record<MessageKey, string>> = {
   "transform.height": "Højde",
   "transform.lift": "Løft",
   "sketch.modeBadge": "Skitsevisning",
+  "axisLock.badge": "Locked to {axis} - press {axis} again to free it",
   "sketch.modeBadgeRevolve": "Revolvér skitse",
   "status.sketchUpdated": "Skitse opdateret",
   "status.revolveCreated": "Revolveret skitse oprettet",

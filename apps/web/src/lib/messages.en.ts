@@ -780,6 +780,7 @@ export const MESSAGES_EN = {
   "transform.height": "Height",
   "transform.lift": "Lift",
   "sketch.modeBadge": "Sketch view",
+  "axisLock.badge": "Locked to {axis} - press {axis} again to free it",
   "sketch.modeBadgeRevolve": "Revolve sketch",
   "status.sketchUpdated": "Sketch updated",
   "status.revolveCreated": "Revolved sketch created",

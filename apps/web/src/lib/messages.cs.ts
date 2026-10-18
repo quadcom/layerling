@@ -855,6 +855,7 @@ export const MESSAGES_CS: Record<MessageKey, string> = {
   "transform.height": "Výška",
   "transform.lift": "Zvednout",
   "sketch.modeBadge": "Pohled náčrtu",
+  "axisLock.badge": "Locked to {axis} - press {axis} again to free it",
   "sketch.modeBadgeRevolve": "Rotační náčrt",
   "status.sketchUpdated": "Náčrt byl upraven",
   "status.revolveCreated": "Vytvořeno rotační těleso z náčrtu",

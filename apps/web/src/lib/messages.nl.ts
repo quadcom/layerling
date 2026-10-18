@@ -779,6 +779,7 @@ export const MESSAGES_NL: Record<MessageKey, string> = {
   "transform.height": "Hoogte",
   "transform.lift": "Optillen",
   "sketch.modeBadge": "Schetsweergave",
+  "axisLock.badge": "Locked to {axis} - press {axis} again to free it",
   "sketch.modeBadgeRevolve": "Omwentelingsschets",
   "status.sketchUpdated": "Schets bijgewerkt",
   "status.revolveCreated": "Omgewentelde schets gemaakt",

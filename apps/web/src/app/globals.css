@@ -6256,6 +6256,45 @@ html[data-theme="dark"] .visibility-hidden-badge {
   pointer-events: none;
 }
 
+/* X, Y or Z tapped while drawing or dragging: the move is held to that axis until the point is placed. */
+.axis-lock-badge {
+  position: absolute;
+  top: 36px;
+  left: 50%;
+  z-index: 9;
+  padding: 4px 10px;
+  color: #3c2f22;
+  background: rgba(255, 255, 255, 0.96);
+  border: 1px solid var(--axis-lock-color);
+  border-left-width: 5px;
+  border-radius: 12px;
+  box-shadow: 0 1px 3px rgba(84, 59, 32, 0.18);
+  font-size: 11px;
+  font-weight: 800;
+  transform: translateX(-50%);
+  pointer-events: none;
+  white-space: nowrap;
+}
+
+.axis-lock-badge.axis-x,
+.sketch-axis-lock-line.axis-x { --axis-lock-color: #e5484d; }
+.axis-lock-badge.axis-y,
+.sketch-axis-lock-line.axis-y { --axis-lock-color: #3fae5a; }
+.axis-lock-badge.axis-z { --axis-lock-color: #3b82f6; }
+
+html[data-theme="dark"] .axis-lock-badge {
+  color: #f2e8dc;
+  background: rgba(40, 30, 20, 0.96);
+}
+
+.sketch-axis-lock-line {
+  stroke: var(--axis-lock-color);
+  stroke-width: 1.5;
+  stroke-dasharray: 10 6;
+  opacity: 0.85;
+  vector-effect: non-scaling-stroke;
+}
+
 .sketch-revolve-preview {
   position: absolute;
   top: 18px;

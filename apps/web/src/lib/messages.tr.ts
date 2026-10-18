@@ -752,6 +752,7 @@ export const MESSAGES_TR: Partial<Record<MessageKey, string>> = {
   "transform.height": "Yükseklik",
   "transform.lift": "Kaldır",
   "sketch.modeBadge": "Eskiz görünümü",
+  "axisLock.badge": "Locked to {axis} - press {axis} again to free it",
   "sketch.modeBadgeRevolve": "Döndürme eskizi",
   "status.sketchUpdated": "Eskiz güncellendi",
   "status.revolveCreated": "Döndürülmüş eskiz oluşturuldu",

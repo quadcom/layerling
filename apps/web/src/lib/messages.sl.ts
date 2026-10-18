@@ -662,6 +662,7 @@ export const MESSAGES_SL: Partial<Record<MessageKey, string>> = {
   "transform.height": "Višina",
   "transform.lift": "Dvig",
   "sketch.modeBadge": "Pogled skice",
+  "axisLock.badge": "Locked to {axis} - press {axis} again to free it",
   "sketch.modeBadgeRevolve": "Skica za vrtenje",
   "status.sketchUpdated": "Skica posodobljena",
   "status.revolveCreated": "Zavrteno telo iz skice ustvarjeno",

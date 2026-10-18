@@ -770,6 +770,7 @@ export const MESSAGES_JA: Partial<Record<MessageKey, string>> = {
   "transform.height": "高さ",
   "transform.lift": "持ち上げ",
   "sketch.modeBadge": "スケッチ表示",
+  "axisLock.badge": "Locked to {axis} - press {axis} again to free it",
   "sketch.modeBadgeRevolve": "回転体スケッチ",
   "status.sketchUpdated": "スケッチを更新しました",
   "status.revolveCreated": "回転体スケッチを作成しました",

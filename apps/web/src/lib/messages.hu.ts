@@ -743,6 +743,7 @@ export const MESSAGES_HU: Partial<Record<MessageKey, string>> = {
   "transform.height": "Magasság",
   "transform.lift": "Emelés",
   "sketch.modeBadge": "Vázlatnézet",
+  "axisLock.badge": "Locked to {axis} - press {axis} again to free it",
   "sketch.modeBadgeRevolve": "Forgatási vázlat",
   "status.sketchUpdated": "Vázlat frissítve",
   "status.revolveCreated": "Forgatott vázlat létrehozva",

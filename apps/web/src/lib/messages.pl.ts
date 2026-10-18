@@ -771,6 +771,7 @@ export const MESSAGES_PL: Partial<Record<MessageKey, string>> = {
   "transform.height": "Wysokość",
   "transform.lift": "Unieś",
   "sketch.modeBadge": "Widok szkicu",
+  "axisLock.badge": "Locked to {axis} - press {axis} again to free it",
   "sketch.modeBadgeRevolve": "Obróć szkic",
   "status.sketchUpdated": "Szkic zaktualizowany",
   "status.revolveCreated": "Utworzono bryłę obrotową ze szkicu",

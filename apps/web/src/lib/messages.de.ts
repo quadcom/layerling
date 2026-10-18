@@ -779,6 +779,7 @@ export const MESSAGES_DE: Record<MessageKey, string> = {
   "transform.height": "Höhe",
   "transform.lift": "Anheben",
   "sketch.modeBadge": "Skizzenansicht",
+  "axisLock.badge": "Locked to {axis} - press {axis} again to free it",
   "sketch.modeBadgeRevolve": "Rotationsskizze",
   "status.sketchUpdated": "Skizze aktualisiert",
   "status.revolveCreated": "Rotationsskizze erstellt",
