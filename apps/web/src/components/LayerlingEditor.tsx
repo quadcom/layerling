@@ -10,6 +10,9 @@ import type { AppThemePreference, ResolvedAppTheme } from "@/lib/appTheme";
 import type { ComponentType, ReactNode, SVGProps } from "react";
 import { t, type MessageKey } from "@/lib/i18n";
 import { useLanguage } from "@/lib/useLanguage";
+import type { NavlibCategory } from "@/lib/navlib";
+import { isSpaceMouseViewCommand, SPACEMOUSE_SET_EDITOR, SPACEMOUSE_SET_SKETCH, SPACEMOUSE_VIEW_FACES } from "@/lib/spaceMouse";
+import { offerSpaceMouseCommands, onSpaceMouseCommand } from "@/lib/spaceMouseConnection";
 import { loftShapePatch, type LoftMeasures } from "@/lib/loftGeometry";
 import { hingeWorldParts } from "@/lib/hingeParts";
 import { copyViaSelectionField, decodeClipboardPayload, encodeClipboardPayload, LOCAL_CLIPBOARD_LIMIT, newestClipboard, type ClipboardPayload } from "@/lib/clipboardPayload";
@@ -13482,7 +13485,7 @@ function SecondaryToolbar({
   };
   // Die Leiste haengt an der Sprache: ohne dieses Abonnement bliebe sie stehen,
   // falls sie spaeter einmal memoisiert wird.
-  useLanguage();
+  const toolbarLanguage = useLanguage();
   const leftTools = [
     { id: "copy", label: t("editor.tool.copy"), icon: ToolbarCopyIcon, action: onCopy, enabled: hasSelection },
     { id: "paste", label: t("editor.tool.paste"), icon: ToolbarPasteIcon, action: onPaste, enabled: hasClipboard },
@@ -13697,6 +13700,38 @@ function SecondaryToolbar({
       )),
     ];
   };
+
+  // The command search's list is what 3DxWare offers for the SpaceMouse buttons, grouped as in the toolbar,
+  // with the view's own commands first. A press runs the entry as it is at that moment, if it can run.
+  const spaceMouseCommandsRef = useRef(buildPaletteCommands);
+  spaceMouseCommandsRef.current = buildPaletteCommands;
+  const spaceMouseSketch = toolbarMode === "sketch";
+  useEffect(() => {
+    const viewActions = (spaceMouseSketch ? ["fit", "home"] : ["fit", "home", "projection", ...SPACEMOUSE_VIEW_FACES]).map((name) => ({
+      id: `view-${name}`,
+      label: t(`spaceMouse.view${name.charAt(0).toUpperCase()}${name.slice(1)}` as MessageKey),
+    }));
+    const categories: NavlibCategory[] = [{ id: "cat-view", label: t("spaceMouse.commandsView"), actions: viewActions }];
+    spaceMouseCommandsRef.current().forEach((command) => {
+      if (command.searchOnly || command.transient) return;
+      let category = categories.find((entry) => entry.label === command.group);
+      if (!category) {
+        category = { id: `cat-${command.id}`, label: command.group, actions: [] };
+        categories.push(category);
+      }
+      if (!category.actions.some((action) => action.id === command.id)) category.actions.push({ id: command.id, label: command.label });
+    });
+    offerSpaceMouseCommands({
+      id: spaceMouseSketch ? SPACEMOUSE_SET_SKETCH : SPACEMOUSE_SET_EDITOR,
+      label: spaceMouseSketch ? t("spaceMouse.sketchBank") : "Layerling",
+      categories,
+    });
+  }, [spaceMouseSketch, sketchActive, toolbarLanguage]);
+  useEffect(() => onSpaceMouseCommand((id) => {
+    if (isSpaceMouseViewCommand(id)) return;
+    const command = spaceMouseCommandsRef.current().find((entry) => entry.id === id);
+    if (command?.enabled) command.run();
+  }), []);
 
   return (
     <div className="secondary-toolbar">

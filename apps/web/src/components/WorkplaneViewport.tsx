@@ -33,6 +33,9 @@ import { t } from "@/lib/i18n";
 import type { ModelSplitPlane } from "@/lib/modelSplit";
 import { useLanguage } from "@/lib/useLanguage";
 import { orthographicFramingZoom, perspectiveFramingDistance } from "@/lib/cameraFraming";
+import { createNavlibCameraModel } from "@/lib/navlibCamera";
+import { isSpaceMouseViewCommand, viewCommandFace } from "@/lib/spaceMouse";
+import { onSpaceMouseCommand, registerSpaceMouseView, startSpaceMouse } from "@/lib/spaceMouseConnection";
 import {
   beginViewCubeDrag,
   moveViewCubeDrag,
@@ -4413,8 +4416,72 @@ export function WorkplaneViewport({
     rebuildShapes(state, shapesRef.current, shapeOutlineIds(), false, placementWorkplaneRef.current);
     syncSplitPlane(state, splitPlaneRef.current);
 
+    // A SpaceMouse moves this view through 3DxWare, which reads the camera and hands back the next one.
+    startSpaceMouse();
+    const spaceMousePivot = createSpaceMousePivot();
+    state.scene.add(spaceMousePivot);
+    let spaceMousePointer: { x: number; y: number } | null = null;
+    const trackSpaceMousePointer = (event: PointerEvent) => {
+      const rect = state.renderer.domElement.getBoundingClientRect();
+      spaceMousePointer = { x: ((event.clientX - rect.left) / Math.max(1, rect.width)) * 2 - 1, y: 1 - ((event.clientY - rect.top) / Math.max(1, rect.height)) * 2 };
+    };
+    const forgetSpaceMousePointer = () => { spaceMousePointer = null; };
+    state.renderer.domElement.addEventListener("pointermove", trackSpaceMousePointer);
+    state.renderer.domElement.addEventListener("pointerleave", forgetSpaceMousePointer);
+    const recordsBox = (ids: Iterable<string> | null) => {
+      const box = new THREE.Box3();
+      const records = ids ? Array.from(ids, (id) => state.shapeRecords.get(id)) : Array.from(state.shapeRecords.values());
+      records.forEach((record) => { if (record?.object.visible) box.expandByObject(record.object); });
+      return box.isEmpty() ? null : box;
+    };
+    const unregisterSpaceMouse = registerSpaceMouseView(createNavlibCameraModel({
+      camera: () => state.camera,
+      target: () => state.controls.target,
+      zoomRange: () => ({ min: state.controls.minZoom, max: state.controls.maxZoom }),
+      minDistance: () => state.controls.minDistance,
+      modelBox: () => {
+        const plate = workspaceRef.current;
+        const box = recordsBox(null) ?? new THREE.Box3();
+        // The plate counts too, so an empty design or a small part still frames to something sensible.
+        return box.union(new THREE.Box3(new THREE.Vector3(-plate.width / 2, 0, -plate.depth / 2), new THREE.Vector3(plate.width / 2, 0, plate.depth / 2)));
+      },
+      selectionBox: () => recordsBox(selectedIdsRef.current),
+      hitTest: (origin, direction, selectionOnly) => {
+        const roots: THREE.Object3D[] = selectionOnly
+          ? selectedIdsRef.current.flatMap((id) => { const object = state.shapeRecords.get(id)?.object; return object ? [object] : []; })
+          : state.shapeLayer.children;
+        const layers = state.raycaster.layers.mask;
+        state.raycaster.set(origin, direction);
+        state.raycaster.layers.set(RENDER_LAYER_SHAPES);
+        const found = state.raycaster.intersectObjects(roots, true).find((entry) => (
+          entry.object instanceof THREE.Mesh && entry.object.visible && !(state.sectionPlane && state.sectionPlane.distanceToPoint(entry.point) < -0.001)
+        ));
+        state.raycaster.layers.mask = layers;
+        if (found || selectionOnly) return found?.point ?? null;
+        // Nothing of the model on the ray: the plate, if the ray meets it on the plate.
+        const plate = workspaceRef.current;
+        const onPlate = state.raycaster.ray.intersectPlane(new THREE.Plane(new THREE.Vector3(0, 1, 0), 0), new THREE.Vector3());
+        return onPlate && Math.abs(onPlate.x) <= plate.width / 2 && Math.abs(onPlate.z) <= plate.depth / 2 ? onPlate : null;
+      },
+      pointer: () => spaceMousePointer,
+      changed: () => { state.needsRender = true; },
+      showPivot: (position) => {
+        spaceMousePivot.visible = Boolean(position);
+        if (position) spaceMousePivot.position.copy(position);
+        state.needsRender = true;
+      },
+      moving: () => { state.needsRender = true; },
+    }));
+
     const animate = () => {
       state.animationId = window.requestAnimationFrame(animate);
+      if (spaceMousePivot.visible) {
+        // The marker keeps one size on the screen, whatever the distance.
+        const size = state.camera instanceof THREE.OrthographicCamera
+          ? (state.camera.top - state.camera.bottom) / state.camera.zoom * 0.008
+          : state.camera.position.distanceTo(spaceMousePivot.position) * 0.006;
+        spaceMousePivot.scale.setScalar(Math.max(1e-4, size));
+      }
       const now = performance.now();
       const controlsChanged = state.controls.update();
       fitCameraDepthRange(state.camera, state.controls.target);
@@ -4497,6 +4564,11 @@ export function WorkplaneViewport({
     return () => {
       // The view is taken down while a sketch is open; it comes back looking where it looked (#150).
       rememberedCameraViews.set(projectIdRef.current ?? "", cameraViewOf(state));
+      unregisterSpaceMouse();
+      state.renderer.domElement.removeEventListener("pointermove", trackSpaceMousePointer);
+      state.renderer.domElement.removeEventListener("pointerleave", forgetSpaceMousePointer);
+      state.scene.remove(spaceMousePivot);
+      disposeObject(spaceMousePivot);
       window.cancelAnimationFrame(state.animationId);
       window.removeEventListener("resize", state.resize);
       state.disposeInteractionListeners();
@@ -8539,6 +8611,16 @@ export function WorkplaneViewport({
     return () => window.removeEventListener("keydown", handleKeyDown);
   }, [focusSelection, onSetPlacementWorkplane, onWorkplaneModeChange, resetView, tapeToolsOpen, sectionViewOpen, setPlacementWorkplaneAtSelection, setTapeActive, setViewCubeFace, togglePlacementWorkplane, toggleProjection, zoomCamera]);
 
+  // The view commands set on SpaceMouse buttons in 3DxWare do what the keys F, Home, O and the view cube do.
+  useEffect(() => onSpaceMouseCommand((id) => {
+    if (!isSpaceMouseViewCommand(id)) return;
+    const face = viewCommandFace(id);
+    if (face) setViewCubeFace(face);
+    else if (id === "view-fit") { if (!focusSelection()) resetView(); }
+    else if (id === "view-home") resetView();
+    else if (id === "view-projection") toggleProjection();
+  }), [focusSelection, resetView, setViewCubeFace, toggleProjection]);
+
   return (
     <main className="workplane-stage">
       <div
@@ -9751,6 +9833,18 @@ function orbitCameraByDrag(state: ThreeState, dx: number, dy: number) {
   state.camera.updateProjectionMatrix();
   state.controls.update();
   state.needsRender = true;
+}
+
+/** 3DxWare's pivot: a small ball drawn over everything, shown while the cap turns the view around it. */
+function createSpaceMousePivot() {
+  const marker = new THREE.Mesh(
+    new THREE.SphereGeometry(1, 16, 12),
+    new THREE.MeshBasicMaterial({ color: "#ff7a1a", depthTest: false, depthWrite: false, transparent: true, opacity: 0.9 }),
+  );
+  marker.renderOrder = 10_000;
+  marker.layers.set(RENDER_LAYER_HELPERS);
+  marker.visible = false;
+  return marker;
 }
 
 function constrainCamera(state: ThreeState, workspace: WorkspaceSettings) {

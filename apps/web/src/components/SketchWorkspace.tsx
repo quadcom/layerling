@@ -31,6 +31,8 @@ import { GuideHelpLink } from "@/components/GuideHelpLink";
 import { clampNudge, constrainToAxis, sketchSegmentDragPointIds, sketchSelectedPointIds, sketchSelectedSegmentIds, sketchSelectionMovePointIds, type SketchSelectableEntity, type SketchSelection } from "@/lib/sketchSelection";
 import { closedPathAt, closedPathRegions, cubicPoint, curveControls, isInsideEdges, orderedPaths, pathEdges, type DisplayPath, type PlaneEdge } from "@/lib/sketchPaths";
 import { capturePointer } from "@/lib/pointerCapture";
+import { createNavlibSketchModel } from "@/lib/navlibSketch";
+import { onSpaceMouseCommand, registerSpaceMouseView, startSpaceMouse } from "@/lib/spaceMouseConnection";
 import { constrainToAngle, sketchLineAngle, sketchPolarPoint, splitTypedLine } from "@/lib/sketchPolar";
 
 export type { SketchPrimitive } from "@/lib/sketchPrimitives";
@@ -577,6 +579,9 @@ export function SketchWorkspace({
   }, [onSnapChange]);
   const [snapOpen, setSnapOpen] = useState(false);
   const [view, setView] = useState<SketchView>({ zoom: 1, pan: { x: 0, z: 0 } });
+  // The SpaceMouse writes several times between two drawings and reads back what it wrote.
+  const viewRef = useRef(view);
+  viewRef.current = view;
   const { zoom, pan } = view;
   const [hover, setHover] = useState<{ x: number; z: number } | null>(null);
   // A handle that was clicked (#347): the arrow keys then move it by one grid step, for a precise shape.
@@ -1326,6 +1331,43 @@ export function SketchWorkspace({
     return () => names.forEach((name) => wrap.removeEventListener(name, onGesture));
   }, [workspace]);
 
+  // While the sketch is open the SpaceMouse slides and zooms the plate, through 3DxWare; the 3D view waits behind.
+  const sketchPlateRef = useRef({ width: workspace.width, depth: workspace.depth });
+  sketchPlateRef.current = { width: workspace.width, depth: workspace.depth };
+  useEffect(() => {
+    startSpaceMouse();
+    const scaleOf = () => {
+      const matrix = svgRef.current?.getScreenCTM();
+      return matrix ? { x: Math.max(0.0001, Math.hypot(matrix.a, matrix.b)), y: Math.max(0.0001, Math.hypot(matrix.c, matrix.d)), matrix } : null;
+    };
+    return registerSpaceMouseView(createNavlibSketchModel({
+      view: () => viewRef.current,
+      setView: (next) => {
+        viewRef.current = next;
+        setView(next);
+      },
+      visibleHalf: () => {
+        const svg = svgRef.current;
+        const scale = scaleOf();
+        if (!svg || !scale) return null;
+        const rect = svg.getBoundingClientRect();
+        return { width: rect.width / 2 / scale.x, height: rect.height / 2 / scale.y };
+      },
+      plate: () => sketchPlateRef.current,
+      pointer: () => {
+        const svg = svgRef.current;
+        const scale = scaleOf();
+        const last = lastPointerRef.current;
+        if (!svg || !scale || !last) return null;
+        const point = svg.createSVGPoint();
+        point.x = last.clientX;
+        point.y = last.clientY;
+        const local = point.matrixTransform(scale.matrix.inverse());
+        return { x: local.x, z: local.y };
+      },
+    }));
+  }, []);
+
   // Matches the 3D editor's buttons: a fixed step raised by the configured zoom speed.
   const zoomByButton = (distanceStep: number) => {
     const scaled = zoomDistanceScale(distanceStep, workspace.zoomSpeed);
@@ -1357,6 +1399,12 @@ export function SketchWorkspace({
     });
     return true;
   }, [focusBounds, workspace.depth, workspace.width]);
+
+  // On the plate the SpaceMouse's Fit and Home view commands do what F and Home do.
+  useEffect(() => onSpaceMouseCommand((id) => {
+    if (id === "view-fit" && !focusSelection()) resetView();
+    else if (id === "view-home") resetView();
+  }), [focusSelection, resetView]);
 
   useEffect(() => {
     const syncShiftConstrain = (shiftKey: boolean) => {

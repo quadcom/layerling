@@ -2,7 +2,8 @@
 
 import { GuideHelpLink } from "@/components/GuideHelpLink";
 import { MAX_OVERHANG_ANGLE, MIN_OVERHANG_ANGLE } from "@/lib/overhangLimits";
-import { Box as BoxIcon, ChevronDown, Grid3X3, History, Palette, Plus, RotateCcw, Ruler, Trash2, X } from "lucide-react";
+import { Box as BoxIcon, ChevronDown, Grid3X3, History, Move3d, Palette, Plus, RotateCcw, Ruler, Trash2, X } from "lucide-react";
+import { SpaceMouseSettings } from "@/components/workplane/SpaceMouseSettings";
 import { useEffect, useLayoutEffect, useRef, useState } from "react";
 import { useMovablePanel } from "@/lib/useMovablePanel";
 import { createPortal } from "react-dom";
@@ -77,7 +78,7 @@ import { DEFAULT_LOFT } from "@/lib/loftGeometry";
 import { selectWholeValue } from "@/lib/numberField";
 
 type WorkspaceSettings = WorkplaneWorkspaceSettings;
-type WorkspaceSettingsSection = "appearance" | "measurement" | "workplane" | "shapes" | "history";
+type WorkspaceSettingsSection = "appearance" | "measurement" | "workplane" | "shapes" | "history" | "spaceMouse";
 
 const MIN_WORKSPACE_SIZE = 60;
 const MAX_WORKSPACE_SIZE = 2000;
@@ -700,6 +701,10 @@ export function WorkspaceSettingsModal({
               <History size={18} />
               <span>{t("workspace.history")}</span>
             </button>
+            <button className={activeSection === "spaceMouse" ? "active" : ""} aria-current={activeSection === "spaceMouse" ? "page" : undefined} onClick={() => setActiveSection("spaceMouse")}>
+              <Move3d size={18} />
+              <span>{t("spaceMouse.title")}</span>
+            </button>
           </nav>
 
           <div className="workspace-modal-content">
@@ -1045,6 +1050,8 @@ export function WorkspaceSettingsModal({
                   <p className="workspace-history-note">{t("workspace.booleanTriangleLimitNote")}</p>
                 </>
               ) : null}
+
+              {activeSection === "spaceMouse" ? <SpaceMouseSettings /> : null}
 
               {activeSection === "measurement" ? (
                 <>
