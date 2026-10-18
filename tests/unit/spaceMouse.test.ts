@@ -206,6 +206,41 @@ describe("the 3D view's model", () => {
     expect(up.y).toBeCloseTo(1);
   });
 
+  it("stops a tilt at straight down, as the mouse does, rather than spinning round to come down on the back", () => {
+    const { model, camera, target } = cameraHost();
+    // Turned about the target until the camera is 10 degrees past the top, upside down.
+    const tilted = (degrees: number) => {
+      const turn = new THREE.Matrix4().makeRotationX(-THREE.MathUtils.degToRad(degrees));
+      return new THREE.Matrix4().makeTranslation(0, 0, 300).premultiply(turn).toArray();
+    };
+    model.write("view.affine", tilted(85));
+    expect(camera.position.z).toBeGreaterThan(0);
+    model.write("view.affine", tilted(100));
+    const forward = camera.getWorldDirection(new THREE.Vector3());
+    expect(forward.y).toBeCloseTo(-1, 5);
+    // Still on the front side, looking the same way, and still round the target.
+    expect(camera.position.z).toBeGreaterThan(0);
+    expect(forward.z).toBeLessThan(0);
+    expect(camera.position.y).toBeCloseTo(300, 0);
+    expect(target.toArray().map((value) => Math.round(value))).toEqual([0, 0, 0]);
+    const up = new THREE.Vector3(0, 1, 0).applyQuaternion(camera.quaternion);
+    expect(up.z).toBeLessThan(0);
+  });
+
+  it("stops a tilt at straight up too", () => {
+    const { model, camera } = cameraHost();
+    const tilted = (degrees: number) => {
+      const turn = new THREE.Matrix4().makeRotationX(THREE.MathUtils.degToRad(degrees));
+      return new THREE.Matrix4().makeTranslation(0, 0, 300).premultiply(turn).toArray();
+    };
+    model.write("view.affine", tilted(85));
+    model.write("view.affine", tilted(95));
+    const forward = camera.getWorldDirection(new THREE.Vector3());
+    expect(forward.y).toBeCloseTo(1, 5);
+    expect(camera.position.z).toBeGreaterThan(0);
+    expect(forward.z).toBeLessThan(0);
+  });
+
   it("does not carry the target off when the zoom gets close: it stops at the surface ahead (the plate's limit held it back)", () => {
     const { model, target } = cameraHost();
     model.write("view.affine", [1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1, 0, 0, 0, 3.5, 1]);

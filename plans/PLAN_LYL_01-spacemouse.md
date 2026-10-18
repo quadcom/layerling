@@ -180,3 +180,20 @@ route depends on what it shows.
   registered is moved), so the cap turns both halves together; closing it gives the cap back to the workplane.
   Hit tests and model box use the original mesh; no pivot marker there. Other renderers checked: the revolve
   preview is a still picture with no controls, and `myShapeThumbnail` draws icons off-screen, so neither needs it.
+  Committed 35bbde58, merged into my-mod, image built and running on the server. Waits on Adrian to try it.
+
+## Two issues from Adrian's try (2026-10-18)
+
+1. **Standard views don't stay locked.** A view button (Top, Front, Left...) only jumps the camera there; the next
+   touch of the cap turns the view away again (Bambu Studio does the same). That makes lining parts up hard.
+   Wanted: a view that stays put until he lets it go. Possible hook: navlib's `view.rotatable` (false = 3DxWare
+   should not turn the view), plus dropping any turn in `applyAffine` while locked (pan and zoom still work).
+   How the lock is released is Adrian's call (asked 2026-10-18).
+2. **The cap tilts over the top.** With the mouse, tilting to look straight down stops at the top. With the cap,
+   it goes past the top and the whole view spins round, so you come down on the back. Cause: `applyAffine`
+   (`apps/web/src/lib/navlibCamera.ts`) takes 3DxWare's camera as is, then `lookAt` with "up" at the top flips it
+   once the camera is upside down. Fix: stop the tilt just short of straight down or up, as the orbit controls do.
+
+**Adrian's answers on the lock (2026-10-18):** it must work for everyone, not only SpaceMouse users: a view
+button locks turning for the mouse too. **Esc** leaves the lock (the SpaceMouse's Esc button sends Esc through
+3DxWare, so it does too). Show a small lock badge by the view cube while locked.

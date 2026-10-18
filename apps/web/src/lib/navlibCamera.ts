@@ -47,6 +47,33 @@ function isMatrix(value: unknown): value is number[] {
   return Array.isArray(value) && value.length === 16 && value.every((entry) => typeof entry === "number" && Number.isFinite(entry));
 }
 
+/** How close to straight down or straight up the view may tilt, as `layerlingOrbitView` allows. */
+const TILT_LIMIT = 1e-3;
+
+/**
+ * The line of sight 3DxWare's camera must keep to, or null when it is fine as it is. Tilted past straight down
+ * (or up), 3DxWare's camera ends up upside down, and keeping up at the top would then spin the view round to the
+ * other side. The mouse stops at the top; so does the cap: the view stays just short of it, facing the way it did.
+ */
+function limitTilt(before: THREE.Vector3, after: THREE.Vector3, rotation: THREE.Quaternion): THREE.Vector3 | null {
+  const level = (vector: THREE.Vector3) => new THREE.Vector3(vector.x, 0, vector.z);
+  const headingBefore = level(before);
+  const headingAfter = level(after);
+  // Upside down, past the top: it faces back the way it came. A roll alone leaves the line of sight where it was.
+  const over = Math.abs(after.y) > 0.5 && after.y * before.y > 0 && headingAfter.dot(headingBefore) < 0;
+  const steepest = Math.cos(TILT_LIMIT);
+  if (!over && Math.abs(after.y) <= steepest) return null;
+  // Facing the way it did; straight down or up has no heading of its own, but the top of the picture has.
+  let heading = over ? headingBefore : headingAfter;
+  if (heading.lengthSq() < 1e-12) {
+    const up = level(new THREE.Vector3(0, 1, 0).applyQuaternion(rotation));
+    heading = after.y < 0 ? up : up.negate();
+  }
+  if (heading.lengthSq() < 1e-12) heading = headingBefore.lengthSq() > 1e-12 ? headingBefore : new THREE.Vector3(0, 0, -1);
+  heading.normalize().multiplyScalar(Math.sin(TILT_LIMIT));
+  return heading.setY(Math.sign(after.y || before.y || -1) * steepest);
+}
+
 export function createNavlibCameraModel(host: NavlibCameraHost): NavlibModel {
   const hit = { from: new THREE.Vector3(), direction: new THREE.Vector3(0, 0, -1), selectionOnly: false };
   let pendingTarget: THREE.Vector3 | null = null;
@@ -129,6 +156,14 @@ export function createNavlibCameraModel(host: NavlibCameraHost): NavlibModel {
     const rotation = new THREE.Quaternion();
     new THREE.Matrix4().fromArray(matrix).decompose(position, rotation, new THREE.Vector3());
     const forward = new THREE.Vector3(0, 0, -1).applyQuaternion(rotation).normalize();
+    const limited = limitTilt(camera.getWorldDirection(new THREE.Vector3()), forward, rotation);
+    if (limited) {
+      // The turn back to the limit goes round the pivot 3DxWare turned about, so what it turned about stays put.
+      const back = new THREE.Quaternion().setFromUnitVectors(forward, limited);
+      const about = pivot ?? target;
+      position.sub(about).applyQuaternion(back).add(about);
+      forward.copy(limited);
+    }
     const depthOf = (point: THREE.Vector3) => point.clone().sub(position).dot(forward);
     const closest = host.minDistance();
     let depth = pendingTarget && depthOf(pendingTarget) > 1e-6 ? depthOf(pendingTarget) : depthOf(target);
