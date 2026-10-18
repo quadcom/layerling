@@ -232,6 +232,8 @@ import { projectedEdgesPath } from "@/lib/sketchEdges";
 import { useRememberedFlag } from "@/lib/useRememberedFlag";
 import { BUG_REPORT_FILE, bugReportText, rememberBugReportEvent, type BugReportEvent } from "@/lib/bugReport";
 import { formatLengthMm, lengthDisplayUnit } from "@/lib/measurementUnits";
+import { setWheelSettings } from "@/lib/wheelValueStep";
+import { installWheelForNumberFields } from "@/lib/wheelAnyField";
 import { wrapMeshAroundCylinder, type CylinderWrapError } from "@/lib/cylinderWrap";
 import { screenAlignedNudge } from "@/lib/keyboardNudge";
 import { LAYERLING_MCP_HEARTBEAT_MS, LAYERLING_MCP_POLL_RETRY_MS, LAYERLING_MCP_ROUTE, type LayerlingMcpCommand, type LayerlingMcpSceneSummary, type LayerlingMcpViewFace } from "@/lib/layerlingMcpProtocol";
@@ -2507,6 +2509,17 @@ export function LayerlingEditor({
       : Number.isFinite(initialPlacementElevation) ? initialPlacementElevation : 0;
   });
   const [workspaceSettings, setWorkspaceSettings] = useState<WorkplaneWorkspaceSettings>(() => normalizeWorkspaceSettings(initialWorkspace));
+  // The mouse wheel's steps are read wherever a field or a drag turns it; they follow the settings from here.
+  useLayoutEffect(() => {
+    setWheelSettings({
+      fieldStep: workspaceSettings.wheelFieldStep,
+      dragStep: workspaceSettings.wheelDragStep,
+      turnStep: workspaceSettings.wheelTurnStep,
+      millimetersPerUnit: lengthDisplayUnit(workspaceSettings).millimetersPerUnit,
+    });
+  }, [workspaceSettings]);
+  // Every number field without a wheel of its own takes the wheel once clicked into.
+  useEffect(() => installWheelForNumberFields(window), []);
   const bedPrinter = printerPresetById(workspaceSettings.printer);
   const overhangs = useMemo(
     () => bedPrinter ? bedOverhangs(shapes, bedPrinter.width, bedPrinter.depth, bedPrinter.height) : [],
@@ -14422,6 +14435,7 @@ function TopActionPanel({
             <input
               type="text"
               inputMode="decimal"
+              data-wheel-step="length"
               value={svgWidthText}
               placeholder={t("import.svgWidthPlaceholder")}
               onChange={(event) => {

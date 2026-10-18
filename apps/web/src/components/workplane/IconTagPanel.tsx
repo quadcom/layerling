@@ -145,6 +145,7 @@ export function IconTagPanel({ onClose, onCreate }: {
           <input
             type="text"
             inputMode="decimal"
+            data-wheel-step="length"
             value={width}
             disabled={busy}
             aria-invalid={!widthOk}

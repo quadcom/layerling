@@ -770,6 +770,7 @@ function PointCoordinateField({ label, value, workspace, onCommit }: {
       <input
         type="text"
         inputMode="decimal"
+        data-wheel-step="length"
         value={draft ?? shown}
         onFocus={(event) => {
           setDraft(shown);

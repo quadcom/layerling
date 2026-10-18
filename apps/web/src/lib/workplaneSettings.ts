@@ -4,6 +4,7 @@ import { normalizeScaleForUnits } from "@/lib/measurementUnits";
 import { DEFAULT_IMPERIAL_GRID_BLOCK_PRESET, DEFAULT_METRIC_GRID_BLOCK_PRESET, DEFAULT_EDGE_LINE_COLOR, DEFAULT_LIGHT_AZIMUTH, DEFAULT_LIGHT_ELEVATION, DEFAULT_SKETCH_BACKGROUND, DEFAULT_SKETCH_GRID_COLOR, DEFAULT_SKETCH_PLATE_COLOR, DEFAULT_WORKPLANE_BACKGROUND, DEFAULT_WORKPLANE_GRID_COLOR, DEFAULT_WORKPLANE_SURFACE_COLOR, inchGridPresetMm } from "@/lib/workplaneGrid";
 import { isThreadProfile } from "@/lib/threadProfiles";
 import { normalizeHexColor } from "@/lib/coloredImport";
+import { DEFAULT_WHEEL_DRAG_STEP, DEFAULT_WHEEL_TURN_STEP, normalizeWheelStep } from "@/lib/wheelValueStep";
 
 export const DEFAULT_SNAP_GRID: GridSize = "1.0 mm";
 export const BRICK_SNAP_STEP = 8;
@@ -76,6 +77,9 @@ export const DEFAULT_WORKPLANE_WORKSPACE: WorkplaneWorkspaceSettings = {
   dimensionsAlwaysVisible: true,
   showRotationAngles: true,
   zoomSpeed: 5,
+  wheelFieldStep: 0,
+  wheelDragStep: DEFAULT_WHEEL_DRAG_STEP,
+  wheelTurnStep: DEFAULT_WHEEL_TURN_STEP,
   units: "Metric (Default)",
   inchFormat: "fraction",
   scale: "1:1 (millimeters)",
@@ -693,6 +697,9 @@ export function normalizeWorkspaceSettings(value: unknown, fallback: WorkplaneWo
     dimensionsAlwaysVisible: booleanOrDefault(candidate.dimensionsAlwaysVisible, fallback.dimensionsAlwaysVisible),
     showRotationAngles: booleanOrDefault(candidate.showRotationAngles, fallback.showRotationAngles),
     zoomSpeed: numberOrDefault(candidate.zoomSpeed, fallback.zoomSpeed),
+    wheelFieldStep: normalizeWheelStep(candidate.wheelFieldStep, fallback.wheelFieldStep, true),
+    wheelDragStep: normalizeWheelStep(candidate.wheelDragStep, fallback.wheelDragStep),
+    wheelTurnStep: normalizeWheelStep(candidate.wheelTurnStep, fallback.wheelTurnStep),
     units,
     inchFormat: candidate.inchFormat === "decimal" ? "decimal" : "fraction",
     scale: normalizeScaleForUnits(units, stringOrDefault(candidate.scale, fallback.scale)),

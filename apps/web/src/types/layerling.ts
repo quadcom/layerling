@@ -363,6 +363,12 @@ export type WorkplaneWorkspaceSettings = {
   /** A turned body shows its angles about X, Y and Z beside it while it is selected. */
   showRotationAngles: boolean;
   zoomSpeed: number;
+  /** One mouse wheel notch in a length field that has the focus, in millimetres; 0 is Auto (the field's own step). */
+  wheelFieldStep: number;
+  /** One mouse wheel notch while a handle, a body or a sketch point is dragged, or a sketch line drawn, in millimetres. */
+  wheelDragStep: number;
+  /** One mouse wheel notch while something is being turned, in degrees. */
+  wheelTurnStep: number;
   units: string;
   /** With Imperial: inches as fractions (1⅝, like similar tools) or decimals (1.625). */
   inchFormat: InchFormat;

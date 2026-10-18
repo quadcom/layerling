@@ -165,7 +165,7 @@ import { MAX_TEARDROP_TIP_ANGLE, MIN_TEARDROP_TIP_ANGLE, normalizeTeardropTipAng
 import { MAX_DOVETAIL_CLEARANCE, normalizeDovetailClearance, normalizeDovetailNeckWidth } from "@/lib/dovetailGeometry";
 import { DEFAULT_SKETCH_STROKE, MAX_SKETCH_STROKE_WIDTH, MIN_SKETCH_STROKE_WIDTH, normalizeSketchStroke, SKETCH_STROKE_JOINS } from "@/lib/sketchStroke";
 import { MAX_TEXT_EDGE, MIN_TEXT_EDGE, normalizeTextEdge } from "@/lib/textEdge";
-import { wheelBaseStep, wheelNextValue, wheelTurn } from "@/lib/wheelValueStep";
+import { lengthFieldWheelStep, wheelBaseStep, wheelNextValue, wheelTurn } from "@/lib/wheelValueStep";
 import { textHasFill } from "@/lib/textFill";
 import { TEXT_FILL_CHOICES, textFillChoice, textLineSettingsInView, textStrokeForChoice, textStrokeWider, type TextFillChoice } from "@/lib/textFillChoice";
 import { MAX_TEXT_LAYERS, MAX_TEXT_LAYER_GROW, MIN_TEXT_LAYER_HEIGHT, namesFromList, type NameTagKeyring, type TextLayer } from "@/lib/textLayers";
@@ -3106,6 +3106,7 @@ function CompactMeasureField({ label, value, min, max, workspace, disabled, onCh
       className="name-tag-measure"
       type="text"
       inputMode="decimal"
+      data-wheel-step="length"
       aria-label={label}
       title={label}
       value={draft ?? shown}
@@ -4100,7 +4101,8 @@ function RangeProperty({
     const turn = wheelTurn(event);
     if (!input || disabled || !editing || document.activeElement !== input || turn === 0) return;
     event.preventDefault();
-    const base = wheelBaseStep(controlMin, controlMax, controlStep, unit === "in");
+    const autoBase = wheelBaseStep(controlMin, controlMax, controlStep, unit === "in");
+    const base = isLength ? lengthFieldWheelStep(autoBase) : autoBase;
     const parsed = parseMeasurementInput(draft);
     const current = Number.isFinite(parsed) ? parsed : controlValue;
     const next = wheelNextValue(current, turn < 0 ? 1 : -1, base, { shift: event.shiftKey, ctrl: event.ctrlKey, alt: event.altKey });

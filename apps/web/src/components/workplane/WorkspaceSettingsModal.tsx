@@ -69,7 +69,7 @@ import {
 } from "@/lib/bentTubeGeometry";
 import { numberLocale, t, type MessageKey } from "@/lib/i18n";
 import { useLanguage } from "@/lib/useLanguage";
-import { measurementOptionLabel, normalizeScaleForUnits, parseMeasurementInput, scaleOptionsForUnits, WORKSPACE_UNIT_OPTIONS } from "@/lib/measurementUnits";
+import { lengthDisplayUnit, measurementOptionLabel, normalizeScaleForUnits, parseMeasurementInput, scaleOptionsForUnits, WORKSPACE_UNIT_OPTIONS } from "@/lib/measurementUnits";
 import { shapeAssetDefaultDimensions, shapeAssetLabel, shapeAssetSpecialDefaults, toolbarShapeAssets } from "@/lib/shapeCatalog";
 import { BOOLEAN_TRIANGLE_LIMIT_PRESETS, BOOLEAN_TRIANGLE_LIMIT_STEP, DEFAULT_WORKPLANE_WORKSPACE, ZOOM_SPEED_SLIDER_MAX, MAX_BOOLEAN_TRIANGLE_LIMIT, MAX_CUSTOM_SHAPE_DIMENSION, MAX_HIGH_RESOLUTION_SIDES, MAX_HIGH_RESOLUTION_STEPS, MIN_BOOLEAN_TRIANGLE_LIMIT, MIN_CUSTOM_SHAPE_DIMENSION, booleanTriangleLimitPreset, workspaceForUnits, snapGridForUnits, type BooleanTriangleLimitPreset, DEFAULT_SNAP_GRID, MAX_CUSTOM_SNAP_GRID, MAX_CUSTOM_SNAP_GRID_NAME, MAX_CUSTOM_SNAP_GRIDS, MIN_CUSTOM_SNAP_GRID, customSnapGridDivisors, customSnapGridLabel, customSnapGridSize, parseCustomSnapGrid, resetGridInSavedDefault, snapGridOptions, standardGridSettings } from "@/lib/workplaneSettings";
 import { DEFAULT_SKETCH_BACKGROUND, DEFAULT_SKETCH_GRID_COLOR, DEFAULT_SKETCH_PLATE_COLOR, IMPERIAL_GRID_BLOCK_PRESETS, inchGridPresetMm, workplaneGridPalette } from "@/lib/workplaneGrid";
@@ -1116,6 +1116,35 @@ export function WorkspaceSettingsModal({
                       else if (!customSnapGrids.some((grid) => grid.size === current.size)) onSnapChange(workspace.units === "Imperial" ? "1/8 in" : DEFAULT_SNAP_GRID);
                     }}
                   />
+                  <div className="workspace-section-heading">
+                    <strong>{t("workspace.wheelSteps")}</strong>
+                    <span>{t("workspace.wheelStepsHint")}</span>
+                  </div>
+                  <WheelStepField
+                    label={t("workspace.wheelFieldStep")}
+                    description={t("workspace.wheelFieldStepHint")}
+                    value={workspace.wheelFieldStep}
+                    unitLabel={lengthDisplayUnit(workspace).label}
+                    perUnit={lengthDisplayUnit(workspace).millimetersPerUnit}
+                    allowAuto
+                    onChange={(wheelFieldStep) => patchWorkspace({ wheelFieldStep })}
+                  />
+                  <WheelStepField
+                    label={t("workspace.wheelDragStep")}
+                    description={t("workspace.wheelDragStepHint")}
+                    value={workspace.wheelDragStep}
+                    unitLabel={lengthDisplayUnit(workspace).label}
+                    perUnit={lengthDisplayUnit(workspace).millimetersPerUnit}
+                    onChange={(wheelDragStep) => patchWorkspace({ wheelDragStep })}
+                  />
+                  <WheelStepField
+                    label={t("workspace.wheelTurnStep")}
+                    description={t("workspace.wheelTurnStepHint")}
+                    value={workspace.wheelTurnStep}
+                    unitLabel="°"
+                    perUnit={1}
+                    onChange={(wheelTurnStep) => patchWorkspace({ wheelTurnStep })}
+                  />
                 </>
               ) : null}
 
@@ -1168,6 +1197,7 @@ export function WorkspaceSettingsModal({
                       <input
                         type="text"
                         inputMode="decimal"
+                        data-wheel-step="length"
                         onFocus={(event) => selectWholeValue(event.currentTarget)}
                         value={dimensionDrafts.width}
                         onChange={(event) => {
@@ -1185,6 +1215,7 @@ export function WorkspaceSettingsModal({
                       <input
                         type="text"
                         inputMode="decimal"
+                        data-wheel-step="length"
                         onFocus={(event) => selectWholeValue(event.currentTarget)}
                         value={dimensionDrafts.depth}
                         onChange={(event) => {
@@ -1235,6 +1266,7 @@ export function WorkspaceSettingsModal({
                         <input
                           type="text"
                           inputMode="decimal"
+                          data-wheel-step="length"
                           onFocus={(event) => selectWholeValue(event.currentTarget)}
                           value={gridBlockSizeDraft}
                           onChange={(event) => setGridBlockSizeDraft(event.currentTarget.value)}
@@ -1294,6 +1326,7 @@ export function WorkspaceSettingsModal({
                             key={`${selectedShapeKind}-${key}-${selectedShapeCustomization[key] ?? "app"}`}
                             type="text"
                             inputMode="decimal"
+                            data-wheel-step="length"
                             onFocus={(event) => selectWholeValue(event.currentTarget)}
                             defaultValue={(selectedShapeCustomization[key] ?? selectedShapeAppDefaults[key]).toFixed(workspace.accuracy)}
                             onBlur={(event) => setShapeDefaultDimension(key, event.currentTarget.value)}
@@ -1382,6 +1415,7 @@ export function WorkspaceSettingsModal({
                         key={`${selectedShapeKind}-limit-${selectedShapeCustomization.maxDimension ?? "app"}`}
                         type="text"
                         inputMode="decimal"
+                        data-wheel-step="length"
                         onFocus={(event) => selectWholeValue(event.currentTarget)}
                         defaultValue={selectedShapeCustomization.maxDimension?.toFixed(workspace.accuracy) ?? ""}
                         placeholder={t("workspace.appLimits")}
@@ -1818,6 +1852,65 @@ function WorkspaceToggle({
 }
 
 /**
+ * One step of the mouse wheel, typed in the unit shown (`perUnit` of the stored unit each). Emptied, a field that
+ * allows Auto goes back to it; otherwise an empty or unreadable entry keeps the step it had.
+ */
+function WheelStepField({
+  label,
+  description,
+  value,
+  unitLabel,
+  perUnit,
+  allowAuto,
+  onChange,
+}: {
+  label: string;
+  description: string;
+  value: number;
+  unitLabel: string;
+  perUnit: number;
+  allowAuto?: boolean;
+  onChange: (value: number) => void;
+}) {
+  const shown = allowAuto && value <= 0 ? "" : String(Math.round((value / perUnit) * 1e6) / 1e6);
+  const [draft, setDraft] = useState<string | null>(null);
+  const commit = () => {
+    if (draft === null) return;
+    setDraft(null);
+    if (draft.trim() === "") {
+      if (allowAuto) onChange(0);
+      return;
+    }
+    const parsed = parseMeasurementInput(draft);
+    if (Number.isFinite(parsed) && (parsed > 0 || (allowAuto && parsed === 0))) onChange(parsed * perUnit);
+  };
+  return (
+    <label className="workspace-history-custom workspace-wheel-step">
+      <span className="workspace-toggle-copy">
+        <span>{label}</span>
+        <small>{description}</small>
+      </span>
+      <span className="workspace-wheel-step-value">
+        <input
+          type="text"
+          inputMode="decimal"
+          data-wheel-step="off"
+          value={draft ?? shown}
+          placeholder={allowAuto ? t("workspace.wheelAuto") : undefined}
+          onFocus={(event) => selectWholeValue(event.currentTarget)}
+          onChange={(event) => setDraft(event.currentTarget.value)}
+          onBlur={commit}
+          onKeyDown={(event) => {
+            if (event.key === "Enter") event.currentTarget.blur();
+          }}
+        />
+        <span>{unitLabel}</span>
+      </span>
+    </label>
+  );
+}
+
+/**
  * The user's own snap measures: a name and a size in millimetres each. The
  * snap menu then offers every one whole, halved and quartered - for a key
  * unit of 19.05 mm that is 1U, 0.5U and 0.25U.
@@ -1869,6 +1962,7 @@ function CustomSnapGridList({
             <input
               type="text"
               inputMode="decimal"
+              data-wheel-step="length"
               value={sizeDrafts[index] ?? String(grid.size)}
               aria-label={t("workspace.customSnapGridSize")}
               onChange={(event) => {

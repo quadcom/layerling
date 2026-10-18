@@ -6,5 +6,13 @@
     "body": {
       "en": "As in Blender: while you draw a sketch line or drag a point, tap X or Y and the line or the move keeps to that axis until you click or let go. The tape measure takes X, Y and Z after its first point or while you move one: tap Z on the top corner of a part and click the plate to measure its height, without the faces in between catching the pointer. Dragging a body takes X and Y. The same key again lets go."
     }
+  },
+  {
+    "title": {
+      "en": "The mouse wheel for fine steps"
+    },
+    "body": {
+      "en": "Every number field you have clicked into now changes with the mouse wheel, not only the ones in the properties. While you hold a handle, drag a body or a sketch point, or draw a sketch line, the wheel makes it a little longer or shorter: 0.01 mm a notch, 0.1 mm with Shift, and a turn handle turns 0.1° a notch. In a sketch, hold Z while you turn the wheel to zoom. The steps are set under Mouse wheel in the Measurement settings."
+    }
   }
 ]

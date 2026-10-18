@@ -29,6 +29,7 @@ import { DEFAULT_SKETCH_STROKE, SKETCH_STROKE_ALIGNS, SKETCH_STROKE_CAPS, SKETCH
 import { selectWholeValue } from "@/lib/numberField";
 import { GuideHelpLink } from "@/components/GuideHelpLink";
 import { axisLockForKey, lockSketchPoint, toggleAxisLock, type AxisLock } from "@/lib/axisLock";
+import { currentWheelSettings, frameHandleOutward, pointCarriedAlong, pointTurnedAbout, wheelNudgeAfterTurn, wheelTurn } from "@/lib/wheelValueStep";
 import { clampNudge, constrainToAxis, sketchSegmentDragPointIds, sketchSelectedPointIds, sketchSelectedSegmentIds, sketchSelectionMovePointIds, type SketchSelectableEntity, type SketchSelection } from "@/lib/sketchSelection";
 import { closedPathAt, closedPathRegions, cubicPoint, curveControls, isInsideEdges, orderedPaths, pathEdges, type DisplayPath, type PlaneEdge } from "@/lib/sketchPaths";
 import { capturePointer } from "@/lib/pointerCapture";
@@ -125,6 +126,10 @@ type PointerAction =
   | { kind: "rotate-selection"; pointerId: number; pivot: { x: number; z: number }; start: { x: number; z: number }; current: { x: number; z: number }; startPoints: SketchPoint[]; snap: boolean }
   | { kind: "rotate-image"; pointerId: number; imageId: string; startAngle: number; current: { x: number; z: number }; start: SketchImage; snap: boolean }
   | { kind: "crop-image"; pointerId: number; imageId: string; handle: ResizeHandle; current: { x: number; z: number }; start: SketchImage };
+
+// The drags the mouse wheel fine-tunes.
+const WHEEL_NUDGED_KINDS = ["move-point", "move-selection", "move-image", "bezier", "resize-selection", "resize-image", "rotate-selection", "rotate-image"] as const;
+type WheelNudgedAction = Extract<PointerAction, { kind: (typeof WHEEL_NUDGED_KINDS)[number] }>;
 
 type ResizeHandle = "nw" | "n" | "ne" | "e" | "se" | "s" | "sw" | "w";
 type SelectionBounds = { minX: number; maxX: number; minZ: number; maxZ: number; width: number; depth: number; cx: number; cz: number };
@@ -841,6 +846,7 @@ export function SketchWorkspace({
       <input
         type="text"
         inputMode="decimal"
+        data-wheel-step="length"
         className="sketch-corner-input"
         value={cornerValue}
         onChange={(e) => setCornerValue(e.target.value)}
@@ -1136,6 +1142,78 @@ export function SketchWorkspace({
     else retargetTouchPress(event);
   };
 
+  // The mouse wheel fine-tunes a drag or the line being drawn: what it has added so far, kept until the drag
+  // lets go or the point is placed, and the point it was added to (where the pointer put it).
+  const wheelNudgeRef = useRef(0);
+  const wheelBaseRef = useRef<{ x: number; z: number } | null>(null);
+  const wheelDragKey = pointerAction ? `${pointerAction.kind}:${pointerAction.pointerId}` : null;
+  const drawingFrom = !pointerAction && activePoint && ["line", "bezier", "smooth"].includes(tool)
+    ? activePoint
+    : !pointerAction && pendingMeasurementStart && tool === "measure"
+    ? pendingMeasurementStart
+    : null;
+  useEffect(() => {
+    wheelNudgeRef.current = 0;
+    wheelBaseRef.current = null;
+  }, [wheelDragKey, drawingFrom?.x, drawingFrom?.z, tool]);
+  // Z held while the wheel turns zooms instead, so the view can come closer while a line is being drawn.
+  const zHeldRef = useRef(false);
+  useEffect(() => {
+    const onKey = (event: KeyboardEvent) => {
+      if (event.key.toLowerCase() === "z" && !event.ctrlKey && !event.metaKey) zHeldRef.current = event.type === "keydown";
+    };
+    const release = () => {
+      zHeldRef.current = false;
+    };
+    window.addEventListener("keydown", onKey);
+    window.addEventListener("keyup", onKey);
+    window.addEventListener("blur", release);
+    return () => {
+      window.removeEventListener("keydown", onKey);
+      window.removeEventListener("keyup", onKey);
+      window.removeEventListener("blur", release);
+    };
+  }, []);
+
+  /** Where a drag's point goes with what the wheel added: further along the drag, out from a frame, or turned. */
+  const wheelNudgedPoint = (action: PointerAction, point: { x: number; z: number }) => {
+    const amount = wheelNudgeRef.current;
+    if (!amount) return point;
+    if (action.kind === "move-point" || action.kind === "move-selection" || action.kind === "move-image" || action.kind === "bezier") {
+      return pointCarriedAlong(action.origin, point, amount);
+    }
+    if (action.kind === "resize-selection" || action.kind === "resize-image") {
+      const outward = frameHandleOutward(action.handle);
+      return { x: point.x + outward.x * amount, z: point.z + outward.z * amount };
+    }
+    if (action.kind === "rotate-selection") return pointTurnedAbout(action.pivot, point, amount);
+    if (action.kind === "rotate-image") return pointTurnedAbout(action.start, point, amount);
+    return point;
+  };
+  const wheelNudgesDrag = (action: PointerAction): action is WheelNudgedAction => WHEEL_NUDGED_KINDS.includes(action.kind as WheelNudgedAction["kind"]);
+
+  /** One wheel notch for the drag or the line being drawn; false when there is neither, so the wheel zooms. */
+  const turnWheelNudge = (event: ReactWheelEvent<SVGSVGElement>) => {
+    if (zHeldRef.current) return false;
+    const action = pointerAction && wheelNudgesDrag(pointerAction) ? pointerAction : null;
+    if (!action && !drawingFrom) return false;
+    const turn = wheelTurn(event);
+    if (turn === 0) return true;
+    const turning = action?.kind === "rotate-selection" || action?.kind === "rotate-image";
+    const { dragStep, turnStep } = currentWheelSettings();
+    wheelNudgeRef.current = wheelNudgeAfterTurn(wheelNudgeRef.current, turn, turning ? turnStep : dragStep, { shift: event.shiftKey, ctrl: event.ctrlKey, alt: event.altKey });
+    if (action) {
+      const base = wheelBaseRef.current ?? action.current;
+      wheelBaseRef.current = base;
+      setPointerAction({ ...action, current: wheelNudgedPoint(action, base) } as PointerAction);
+    } else if (drawingFrom) {
+      const base = wheelBaseRef.current ?? hover;
+      wheelBaseRef.current = base;
+      if (base) setHover(pointCarriedAlong(drawingFrom, base, wheelNudgeRef.current));
+    }
+    return true;
+  };
+
   const handlePlanePointerDown = (event: ReactPointerEvent<SVGSVGElement>) => {
     if (event.button === 1) {
       beginPan(event);
@@ -1145,9 +1223,11 @@ export function SketchWorkspace({
     const point = pointFromEvent(event);
     if (!point) return;
     event.preventDefault();
+    // What the wheel added to the line being drawn goes with the click.
+    const withDrawingNudge = (placed: { x: number; z: number }) => drawingFrom ? pointCarriedAlong(drawingFrom, placed, wheelNudgeRef.current) : placed;
     if (tool === "bezier") {
       capturePointer(event.currentTarget, event.pointerId);
-      const startPoint = activePoint ? drawTowards(activePoint, point, event.shiftKey) : point;
+      const startPoint = withDrawingNudge(activePoint ? drawTowards(activePoint, point, event.shiftKey) : point);
       setPointerAction({ kind: "bezier", pointerId: event.pointerId, origin: startPoint, current: startPoint });
     } else if (tool === "select" || (tool === "erase" && onEraseMany)) {
       capturePointer(event.currentTarget, event.pointerId);
@@ -1158,7 +1238,9 @@ export function SketchWorkspace({
         : pendingMeasurementStart && tool === "measure"
         ? drawTowards(pendingMeasurementStart, point, event.shiftKey)
         : point;
-      onPlanePoint(clickPoint);
+      onPlanePoint(withDrawingNudge(clickPoint));
+      wheelNudgeRef.current = 0;
+      wheelBaseRef.current = null;
     }
   };
 
@@ -1188,7 +1270,12 @@ export function SketchWorkspace({
         ? pendingMeasurementStart
         : null;
     const hoverPoint = drawingOrigin && point ? drawTowards(drawingOrigin, point, event.shiftKey) : point;
-    setHover(hoverPoint);
+    if (drawingOrigin && hoverPoint) {
+      wheelBaseRef.current = hoverPoint;
+      setHover(pointCarriedAlong(drawingOrigin, hoverPoint, wheelNudgeRef.current));
+    } else {
+      setHover(hoverPoint);
+    }
     if (point && pointerAction) {
       // Shift held while a point, a line or a selection is being dragged keeps the
       // move on one axis, as on the workplane. Pressing it only starts a drag
@@ -1201,9 +1288,10 @@ export function SketchWorkspace({
       const current = unsnapped && pointerAction.kind === "resize-selection" && pointerAction.grab
         ? resizePointerOnGrid(unsnapped, pointerAction.grab, snapStep(snap), workspace.width / 2, workspace.depth / 2)
         : lockOrigin ? dragTowards(lockOrigin, point, event.shiftKey) : point;
+      wheelBaseRef.current = current;
       setPointerAction({
         ...pointerAction,
-        current,
+        current: wheelNudgedPoint(pointerAction, current),
         ...(pointerAction.kind === "resize-selection" ? { proportional: event.shiftKey } : {}),
         ...(pointerAction.kind === "rotate-image" || pointerAction.kind === "rotate-selection" ? { snap: event.shiftKey } : {}),
       } as PointerAction);
@@ -1301,6 +1389,7 @@ export function SketchWorkspace({
 
   const handleWheel = (event: ReactWheelEvent<SVGSVGElement>) => {
     event.preventDefault();
+    if (turnWheelNudge(event)) return;
     const bounds = event.currentTarget.getBoundingClientRect();
     const offset = { x: event.clientX - (bounds.left + bounds.width / 2), y: event.clientY - (bounds.top + bounds.height / 2) };
     const pixelsPerUnit = Math.min(bounds.width / workspace.width, bounds.height / workspace.depth);
@@ -1433,10 +1522,13 @@ export function SketchWorkspace({
       const point = pointFromEvent(lastPointerRef.current);
       if (!point) return;
       const hoverPoint = drawingOrigin ? drawTowards(drawingOrigin, point, shiftKey, lock) : point;
-      setHover(hoverPoint);
+      if (drawingOrigin) wheelBaseRef.current = hoverPoint;
+      setHover(drawingOrigin ? pointCarriedAlong(drawingOrigin, hoverPoint, wheelNudgeRef.current) : hoverPoint);
       if (pointerAction) {
         if (lockOrigin) {
-          setPointerAction((prev) => prev ? { ...prev, current: dragTowards(lockOrigin, point, shiftKey, lock) } : null);
+          const current = dragTowards(lockOrigin, point, shiftKey, lock);
+          wheelBaseRef.current = current;
+          setPointerAction((prev) => prev ? { ...prev, current: wheelNudgedPoint(prev, current) } as PointerAction : null);
         } else if (pointerAction.kind === "resize-selection") {
           setPointerAction((prev) => prev?.kind === "resize-selection" ? { ...prev, proportional: shiftKey } : prev);
         }
@@ -2559,6 +2651,7 @@ export function SketchWorkspace({
                   ref={typedLineLengthRef}
                   value={typedLine.length}
                   inputMode="decimal"
+                  data-wheel-step="length"
                   aria-invalid={lengthInvalid || typedLineOffPlate}
                   onFocus={(event) => event.currentTarget.setSelectionRange(event.currentTarget.value.length, event.currentTarget.value.length)}
                   onChange={(event) => {
@@ -2636,6 +2729,7 @@ export function SketchWorkspace({
               value={editingBoxSize.value}
               autoFocus
               inputMode="decimal"
+              data-wheel-step="length"
               aria-label={t(editingBoxSize.axis === "x" ? "sketch.boxWidth" : "sketch.boxDepth")}
               onPointerDown={(event) => event.stopPropagation()}
               onFocus={(event) => event.currentTarget.select()}
@@ -2668,6 +2762,7 @@ export function SketchWorkspace({
               value={editingDimension.value}
               autoFocus
               inputMode="decimal"
+              data-wheel-step="length"
               onPointerDown={(event) => event.stopPropagation()}
               onFocus={(event) => event.currentTarget.select()}
               onChange={(event) => setEditingDimension((prev) => prev ? { ...prev, value: event.target.value } : null)}
@@ -2977,6 +3072,7 @@ function SketchImageInspector({
                   className="sketch-image-number-input"
                   type="text"
                   inputMode="decimal"
+                  data-wheel-step="length"
                   autoFocus
                   value={calibrateDraft}
                   onFocus={(event) => selectWholeValue(event.currentTarget)}
@@ -3178,6 +3274,7 @@ function SketchImagePositionField({
       <input
         type="text"
         inputMode="decimal"
+        data-wheel-step="length"
         onFocus={(event) => selectWholeValue(event.currentTarget)}
         value={draft}
         disabled={disabled}
