@@ -120,6 +120,12 @@ Več teles pride ven skupaj, tako kot so stala drugo glede na drugo, in ostanejo
 
 {{ui:myShapes.title}} so v tem brskalniku, ločeno od načrtov, in so ob naslednjem zagonu takoj spet tam. {{ui:dashboard.backupAll}} na začetni strani jih shrani skupaj z načrti, ob odpiranju varnostne kopije se vrnejo oboje. Samo oblike shraniš z {{ui:myShapes.backup}} (puščica navzdol) kot datoteko ZIP in jih z {{ui:myShapes.load}} (puščica navzgor) prineseš v drug brskalnik. {{ui:myShapes.load}} sprejme tudi posamezne načrte `.lyl`, vsak potem postane oblika. Kar je že tam, se ne ustvari dvakrat.
 
+### Mape
+
+Veliko oblik po meri je laže razvrstiti v mape. {{ui:myShapes.newFolder}} (mapa s plusom poleg {{ui:myShapes.saveSelection}}) vpraša za ime in ustvari mapo na vrhu; mapa s plusom pri mapi, {{ui:myShapes.newSubfolder}}, ustvari mapo v njej. Mape segajo tri ravni globoko: mapa na tretji ravni sprejme oblike, ne pa novih map. Mape stojijo nad oblikami, ki niso v nobeni mapi, urejene po imenu, in se odpirajo in zapirajo s puščico; število pri mapi šteje oblike v njej in v mapah pod njo. Pri shranjevanju izberi mapo na seznamu poleg imena; z {{ui:myShapes.noFolder}} oblika ostane na vrhu.
+
+Mapa s puščico na ploščici premakne obliko v drugo mapo ali z {{ui:myShapes.noFolder}} spet ven. Svinčnik pri mapi jo preimenuje, koš jo po vprašanju izbriše skupaj z mapami in oblikami v njej. Same mape ni mogoče premakniti: ustvari novo tam, kamor sodi, in vanjo premakni oblike. Varnostna kopija ohrani mape, in ob nalaganju se oblike vrnejo na isto mesto. Na strežniku so mape mape v `Custom shapes`.
+
 ### Oblike po meri na strežniku
 
 Če je [shranjevanje na strežniku](chapter:datoteke-in-shranjevanje) vklopljeno, področje pokaže dve skupini: {{ui:myShapes.onServer}} in {{ui:myShapes.inBrowser}}. Pri shranjevanju izbereš, kam oblika pride; privzeto je strežnik. Tam leži v mapi `Custom shapes`, kot lastna datoteka `.lyl` s sličico predogleda, in je zato na voljo na vsaki napravi, ki doseže strežnik. Obliko iz brskalnika postaviš na strežnik z oblakom na njeni ploščici; v brskalniku je potem ni več dvakrat.

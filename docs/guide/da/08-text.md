@@ -121,6 +121,27 @@ Kortet {{ui:iconTag.title}} øverst i indstillingerne rummer:
 
 SVG'en skal have lukkede omrids; en tegning med kun åbne linjer kan ikke blive et tag. En skitseform hvis fyld er en linje beholder den: arealet af den linje er ikonet.
 
+## QR-koder
+
+En QR-kode gør en tekst eller en webadresse til et mønster, som et telefonkamera læser: et link til din butik på et skilt, Wi-Fi-navnet på en bordskåner, et telefonnummer på en nøglering.
+
+Vælg {{ui:shape.qrCode}} i formbiblioteket. Et vindue åbner sig; markøren står allerede i tekstfeltet:
+
+- **{{ui:qrCode.text}}:** hvad koden siger. Enter laver koden, Shift+Enter starter en ny linje. Under feltet ser du, hvor meget af pladsen der er brugt; æ, ø, å og andre specialtegn fylder to byte. Er teksten for lang, siger feltet det.
+- **{{ui:qrCode.errorCorrection}}:** L, M, Q eller H. Et højere niveau kan stadig læses, når en del af koden er snavset eller ridset (L ca. 7 %, M 15 %, Q 25 %, H 30 %), men kræver flere moduler til den samme tekst, så hvert modul bliver mindre. Først er M valgt.
+- **{{ui:qrCode.style}}:** {{ui:qrCode.style.code}} bygger koden alene, 4 mm høj. {{ui:qrCode.style.raised}} sætter den 1 mm høj på en hvid plade på 3 mm, som et bundt af to farver, så et flerfarvet print printer koden mørk og pladen lys. {{ui:qrCode.style.engraved}} skærer koden 1 mm ned i pladen.
+- **{{ui:qrCode.sizeBy}}:** skriv kodens samlede {{ui:qrCode.sizeBy.width}} (først 40 mm) eller størrelsen på ét modul; det andet tal står nedenunder. Moduler under 0,8 mm får en advarsel. Det er en tommelfingerregel for en 0,4 mm dyse, ingen garanti: printer, materiale, farver og telefon spiller alle ind.
+- **{{ui:qrCode.quietZone}}:** scannere har brug for en tom kant på fire moduler rundt om koden. På en plade hører kanten til pladen; slå den kun fra, hvis pladen sidder på en større lys flade. Koden alene har ingen egen kant: lad pladsen rundt om den være fri.
+- **Højder:** kodens højde, på en plade kodehøjden eller graveringsdybden, og pladetykkelsen.
+
+Forhåndsvisningen viser koden, som den bliver bygget. {{ui:qrCode.ok}} sætter den midt på pladen.
+
+Koden er et legeme som alle andre: flyt den, drej den, skalér den (hold bredde og dybde ens, ellers bliver koden forvrænget), gruppér den, eller gør den til et hul og gruppér den ind i en egen del for at gravere den dér. Skalering skalerer hele koden; hvert modul forbliver kvadratisk.
+
+Kortet {{ui:qrCode.title}} øverst i dens indstillinger rummer teksten. Ret den og klik på {{ui:qrCode.regenerate}}: koden bygges igen, hvor den står, og så bred, som den er nu. Fejlkorrektion, stillezone og byggemåde forbliver, som de blev valgt; til andre valg laver du en ny kode fra biblioteket.
+
+Scan koden med din telefon, før du printer den, og en gang til efter printet. Mørkt på lyst læses bedst; en lys kode på en mørk plade læses ikke af alle telefoner.
+
 ## Tekst på en cirkelbue
 
 Skal bogstaverne ikke løbe lige, men følge kanten af en mønt, et låg eller en ring? Til det er der indstillingen {{ui:prop.textCurved}}.

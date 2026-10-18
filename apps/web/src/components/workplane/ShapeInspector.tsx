@@ -3,7 +3,7 @@
 import { displayY, displayYTurn, insideZ, insideZTurn } from "@/lib/displayAxes";
 import { GuideHelpLink } from "@/components/GuideHelpLink";
 import { guideChapterForShape, guideSectionForShape } from "@/lib/guideLinks";
-import { ChevronDown, ChevronUp, Cylinder, Eye, EyeOff, FolderOpen, Grid3x3, Layers, Lock, Minus, Pencil, Plus, RotateCcw, Split, Tags, Unlock } from "lucide-react";
+import { ChevronDown, ChevronUp, Cylinder, Eye, EyeOff, FolderOpen, Grid3x3, Layers, Lock, Minus, Pencil, Plus, RefreshCw, RotateCcw, Split, Tags, Unlock } from "lucide-react";
 import { Fragment, createContext, useCallback, useContext, useEffect, useLayoutEffect, useMemo, useRef, useState, type CSSProperties, type Dispatch, type ReactNode, type SetStateAction } from "react";
 import {
   DEFAULT_GEAR_HELIX_ANGLE,
@@ -172,6 +172,7 @@ import { MAX_TEXT_LAYERS, MAX_TEXT_LAYER_GROW, MIN_TEXT_LAYER_HEIGHT, namesFromL
 import { DEFAULT_KEYRING_DIAMETER, MIN_KEYRING_DIAMETER, TEXT_KEYRING_SIDES } from "@/lib/textGeometry";
 import { addTextLayer, MIN_LETTER_SIZE, MIN_NAME_TAG_LAYERS, NAME_TAG_GAP, NAME_TAG_LAYERS, NAME_TAG_LETTER_SIZE, removeTextLayer, textLetterSize, textLetterSizePatch, type NameTagStack } from "@/lib/nameTag";
 import { FONT_MANAGER_OPTION, requestFontManager } from "@/lib/fontManagerEvents";
+import { QR_BYTE_CAPACITY, qrByteLength, qrTextFits, type QrCodeSettings } from "@/lib/qrCode";
 import { ICON_TAG_LAYERS, iconTagFitCount, MAX_ICON_TAG_WIDTH, MAX_ICON_TAGS, MIN_ICON_TAG_WIDTH, normalizeIconTagCount, type IconLayerStack } from "@/lib/iconTag";
 import { PICTURE_FILE_ACCEPT } from "@/lib/pictureIcon";
 import { customFontList, textFontLabel } from "@/lib/textFonts";
@@ -180,19 +181,28 @@ import { loftMeasures, loftShapePatch, loftTiltLimit, maxLoftWall, MAX_LOFT_SIDE
 import { MAX_KNURL_ANGLE, MIN_KNURL_ANGLE, MIN_KNURL_COUNT, MIN_KNURL_DEPTH, knurlSettings, maxKnurlChamfer, maxKnurlCount, maxKnurlDepth, maxRoundKnurlDepth, normalizeKnurlAngle, normalizeKnurlChamfer, normalizeKnurlCount, normalizeKnurlDepth, normalizeKnurlPattern } from "@/lib/knurlGeometry";
 import {
   DEFAULT_GRIDFINITY_LABEL_CORNER,
-  DEFAULT_GRIDFINITY_LABEL_CORNER_SIZE,
   GRIDFINITY_LABEL_WALL_KEYS,
+  GRIDFINITY_SCOOP_WALL_KEYS,
   MAX_GRIDFINITY_HEIGHT_UNITS,
-  MAX_GRIDFINITY_LABEL_CORNER_SIZE,
-  MAX_GRIDFINITY_UNITS,
-  MIN_GRIDFINITY_LABEL_HEIGHT_UNITS,
+  MIN_GRIDFINITY_FLOOR_HEIGHT,
   MIN_GRIDFINITY_LABEL_WIDTH,
+  MIN_GRIDFINITY_SCOOP_RADIUS,
   MIN_GRIDFINITY_UNITS,
+  gridfinityFloorFits,
+  gridfinityFloorHeight,
+  gridfinityFloorMaxHeight,
+  gridfinityLabelCornerSize,
+  gridfinityLabelFits,
   gridfinityLabelLength,
   gridfinityLabelLimits,
+  gridfinityLabelMaxCornerSize,
   gridfinityLabelMaxWidth,
   gridfinityLabelWidth,
+  gridfinityMaxUnits,
   gridfinityPlan,
+  gridfinityScoopFits,
+  gridfinityScoopMaxRadius,
+  gridfinityScoopRadius,
   gridfinityShapePatch,
   normalizeGridfinityType,
 } from "@/lib/gridfinityGeometry";
@@ -376,7 +386,7 @@ const RELATIVE_SIZE_PROPERTY_IDS = new Set(["width", "height", "length", "diamet
 const ROTATION_PROPERTY_IDS = new Set(["rotateX", "rotateY", "rotateZ"]);
 
 function propertyUsesLengthUnit(key: string) {
-  return ["textLineWidth", "textEdgeSize", "letterSize", "iconWidth", "keyringDiameter", "positionX", "positionY", "positionZ", "pivotX", "pivotY", "pivotZ", "radius", "length", "width", "height", "bevel", "topRadius", "baseRadius", "thickness", "outerDiameter", "innerDiameter", "textRadius", "extrudeTopOffsetX", "extrudeTopOffsetZ", "toothSize", "toothWidth", "gearBacklash", "centerHole", "slotSmallEnd", "slotCentreDistance", "sketchLineWidth", "topLength", "topWidth", "bottomLength", "bottomWidth", "diameter", "pitch", "clearance", "axialClearance", "boltClearance", "threadDepth", "threadCoreDiameter", "threadLength", "headHeight", "chamfer", "chamferBottom", "headChamfer", "wire", "starOuterSize", "starInnerSize", "starOuterFillet", "starInnerFillet", "heartTipFillet", "crescentThickness", "crescentTipFillet", "honeycombCellSize", "honeycombWallThickness", "honeycombFrameWidth", "cornerFillet", "topBottomFillet", "bentTubeSize", "bentTubeWall", "bentTubeSegmentLength", "bentTubeBendRadius", "dovetailNeckWidth", "dovetailClearance", "hingePinDiameter", "hingeLeafThickness", "hingeClearance", "screwHoleShaft", "screwHoleHeadDepth", "knurlDepth", "knurlChamfer", "loftBottomWidth", "loftBottomDepth", "loftTopWidth", "loftTopDepth", "loftBottomCorner", "loftTopCorner", "loftOffsetX", "loftOffsetZ", "loftWall", "gridfinityLabelBackLength", "gridfinityLabelBackOffset", "gridfinityLabelBackWidth", "gridfinityLabelCornerSize", "gridfinityLabelFrontLength", "gridfinityLabelFrontOffset", "gridfinityLabelFrontWidth", "gridfinityLabelLeftLength", "gridfinityLabelLeftOffset", "gridfinityLabelLeftWidth", "gridfinityLabelRightLength", "gridfinityLabelRightOffset", "gridfinityLabelRightWidth"].includes(key);
+  return ["textLineWidth", "textEdgeSize", "letterSize", "iconWidth", "keyringDiameter", "positionX", "positionY", "positionZ", "pivotX", "pivotY", "pivotZ", "radius", "length", "width", "height", "bevel", "topRadius", "baseRadius", "thickness", "outerDiameter", "innerDiameter", "textRadius", "extrudeTopOffsetX", "extrudeTopOffsetZ", "toothSize", "toothWidth", "gearBacklash", "centerHole", "slotSmallEnd", "slotCentreDistance", "sketchLineWidth", "topLength", "topWidth", "bottomLength", "bottomWidth", "diameter", "pitch", "clearance", "axialClearance", "boltClearance", "threadDepth", "threadCoreDiameter", "threadLength", "headHeight", "chamfer", "chamferBottom", "headChamfer", "wire", "starOuterSize", "starInnerSize", "starOuterFillet", "starInnerFillet", "heartTipFillet", "crescentThickness", "crescentTipFillet", "honeycombCellSize", "honeycombWallThickness", "honeycombFrameWidth", "cornerFillet", "topBottomFillet", "bentTubeSize", "bentTubeWall", "bentTubeSegmentLength", "bentTubeBendRadius", "dovetailNeckWidth", "dovetailClearance", "hingePinDiameter", "hingeLeafThickness", "hingeClearance", "screwHoleShaft", "screwHoleHeadDepth", "knurlDepth", "knurlChamfer", "loftBottomWidth", "loftBottomDepth", "loftTopWidth", "loftTopDepth", "loftBottomCorner", "loftTopCorner", "loftOffsetX", "loftOffsetZ", "loftWall", "gridfinityLabelBackLength", "gridfinityLabelBackOffset", "gridfinityLabelBackWidth", "gridfinityLabelCornerSize", "gridfinityLabelFrontLength", "gridfinityLabelFrontOffset", "gridfinityLabelFrontWidth", "gridfinityLabelLeftLength", "gridfinityLabelLeftOffset", "gridfinityLabelLeftWidth", "gridfinityLabelRightLength", "gridfinityLabelRightOffset", "gridfinityLabelRightWidth", "gridfinityScoopRadius", "gridfinityFloorHeight"].includes(key);
 }
 
 /**
@@ -937,9 +947,15 @@ function getShapePropertiesWithAppLimits(shape: WorkplaneShape, onUpdate: ShapeI
         hint: t(plan.type === "bin" ? "gridfinity.binHint" : "gridfinity.baseplateHint"),
         onChange: (value) => apply({ type: normalizeGridfinityType(value) }),
       },
-      { id: "gridfinityUnitsX", label: t("prop.gridfinityUnitsX"), value: plan.count.x, min: MIN_GRIDFINITY_UNITS, max: MAX_GRIDFINITY_UNITS, step: 1, onChange: (value) => apply({ x: Math.round(value) }) },
-      { id: "gridfinityUnitsZ", label: t("prop.gridfinityUnitsZ"), value: plan.count.z, min: MIN_GRIDFINITY_UNITS, max: MAX_GRIDFINITY_UNITS, step: 1, onChange: (value) => apply({ z: Math.round(value) }) },
     ];
+    if (plan.type === "bin") {
+      properties.push({ type: "toggle", id: "gridfinityHalfGrid", label: t("prop.gridfinityHalfGrid"), value: plan.halfGrid, onChange: (value) => apply({ halfGrid: value }) });
+    }
+    const maxUnits = gridfinityMaxUnits(shape);
+    properties.push(
+      { id: "gridfinityUnitsX", label: t("prop.gridfinityUnitsX"), value: plan.count.x, min: MIN_GRIDFINITY_UNITS, max: maxUnits, step: 1, hint: plan.halfGrid ? t("gridfinity.halfGridHint") : undefined, onChange: (value) => apply({ x: Math.round(value) }) },
+      { id: "gridfinityUnitsZ", label: t("prop.gridfinityUnitsZ"), value: plan.count.z, min: MIN_GRIDFINITY_UNITS, max: maxUnits, step: 1, onChange: (value) => apply({ z: Math.round(value) }) },
+    );
     if (plan.type === "bin") {
       properties.push(
         { id: "gridfinityUnitsY", label: t("prop.gridfinityUnitsY"), value: plan.count.y, min: MIN_GRIDFINITY_UNITS, max: MAX_GRIDFINITY_HEIGHT_UNITS, step: 1, onChange: (value) => apply({ y: Math.round(value) }) },
@@ -947,7 +963,13 @@ function getShapePropertiesWithAppLimits(shape: WorkplaneShape, onUpdate: ShapeI
         { type: "toggle", id: "gridfinityMagnets", label: t("prop.gridfinityMagnets"), value: plan.magnets, onChange: (value) => onUpdate({ gridfinityMagnets: value }) },
       );
     }
-    if (plan.type === "bin" && plan.count.y >= MIN_GRIDFINITY_LABEL_HEIGHT_UNITS) {
+    const fields = { ...shape, depth };
+    if (gridfinityFloorFits(fields)) {
+      // The floor (#455): raised, it leaves a bin blank to cut shapes into; it decides what room the shelves and scoops have.
+      const maxFloor = gridfinityFloorMaxHeight(fields);
+      properties.push({ id: "gridfinityFloorHeight", label: t("prop.gridfinityFloorHeight"), value: gridfinityFloorHeight(fields), min: MIN_GRIDFINITY_FLOOR_HEIGHT, max: maxFloor, step: 0.05, hint: t("gridfinity.floorHeightHint"), onChange: (value) => onUpdate({ gridfinityFloorHeight: clamp(value, MIN_GRIDFINITY_FLOOR_HEIGHT, maxFloor) }) });
+    }
+    if (gridfinityLabelFits(fields)) {
       // Label shelves (#455): each wall's switch with its own width, length and position under it, then the corners they share.
       const walls = [
         { wall: "back", label: "prop.gridfinityLabelBack" },
@@ -955,7 +977,6 @@ function getShapePropertiesWithAppLimits(shape: WorkplaneShape, onUpdate: ShapeI
         { wall: "left", label: "prop.gridfinityLabelLeft" },
         { wall: "right", label: "prop.gridfinityLabelRight" },
       ] as const;
-      const fields = { ...shape, depth };
       walls.forEach(({ wall, label }) => {
         const keys = GRIDFINITY_LABEL_WALL_KEYS[wall];
         const { on } = keys;
@@ -984,8 +1005,25 @@ function getShapePropertiesWithAppLimits(shape: WorkplaneShape, onUpdate: ShapeI
             options: [{ value: "round", label: t("gridfinity.labelRound") }, { value: "chamfer", label: t("gridfinity.labelChamfer") }],
             onChange: (value) => onUpdate({ gridfinityLabelCorner: value === "chamfer" ? "chamfer" : "round" }),
           },
-          { id: "gridfinityLabelCornerSize", label: t("prop.gridfinityLabelCornerSize"), value: clamp(shape.gridfinityLabelCornerSize ?? DEFAULT_GRIDFINITY_LABEL_CORNER_SIZE, 0, MAX_GRIDFINITY_LABEL_CORNER_SIZE), min: 0, max: MAX_GRIDFINITY_LABEL_CORNER_SIZE, step: 0.5, onChange: (value) => onUpdate({ gridfinityLabelCornerSize: value }) },
+          { id: "gridfinityLabelCornerSize", label: t("prop.gridfinityLabelCornerSize"), value: gridfinityLabelCornerSize(fields), min: 0, max: gridfinityLabelMaxCornerSize(plan), step: 0.5, onChange: (value) => onUpdate({ gridfinityLabelCornerSize: value }) },
         );
+      }
+    }
+    if (gridfinityScoopFits(fields)) {
+      // Finger scoops (#455): a switch for each wall, then the radius they share.
+      const walls = [
+        { wall: "back", label: "prop.gridfinityScoopBack" },
+        { wall: "front", label: "prop.gridfinityScoopFront" },
+        { wall: "left", label: "prop.gridfinityScoopLeft" },
+        { wall: "right", label: "prop.gridfinityScoopRight" },
+      ] as const;
+      walls.forEach(({ wall, label }) => {
+        const key = GRIDFINITY_SCOOP_WALL_KEYS[wall];
+        properties.push({ type: "toggle", id: key, label: t(label), value: shape[key] === true, onChange: (value) => onUpdate({ [key]: value }) });
+      });
+      if (walls.some(({ wall }) => shape[GRIDFINITY_SCOOP_WALL_KEYS[wall]] === true)) {
+        const max = Math.max(MIN_GRIDFINITY_SCOOP_RADIUS, gridfinityScoopMaxRadius(fields));
+        properties.push({ id: "gridfinityScoopRadius", label: t("prop.gridfinityScoopRadius"), value: gridfinityScoopRadius(fields), min: MIN_GRIDFINITY_SCOOP_RADIUS, max, step: 0.5, onChange: (value) => onUpdate({ gridfinityScoopRadius: clamp(value, MIN_GRIDFINITY_SCOOP_RADIUS, max) }) });
       }
     }
     return properties;
@@ -2251,6 +2289,7 @@ export function ShapeInspector({
   onTextTags,
   textLayerStack: nameTagStack,
   iconTag,
+  qrCode,
   onInteractionActiveChange,
   onSnapGridAwayChange,
   proportionLock = false,
@@ -2282,6 +2321,8 @@ export function ShapeInspector({
   textLayerStack?: NameTagStack | null;
   /** The icon tag card's wiring, for a sketch body or an icon tag; null for anything else. */
   iconTag?: IconTagControls | null;
+  /** The QR code card's wiring (#553), for a QR code; null for anything else. */
+  qrCode?: QrCodeControls | null;
   onInteractionActiveChange?: (active: boolean) => void;
   /** The snap control lives in the expanded panel; collapsed, the workplane shows its own. */
   /** Called with true while the inspector does not carry the snap grid control (collapsed, or floating), so the workplane shows it. */
@@ -2585,6 +2626,7 @@ export function ShapeInspector({
         />
       ) : null}
       {shape.kind === "text" && onLayerText ? <MakeLayersButton disabled={locked} onLayerText={onLayerText} /> : null}
+      {qrCode ? <QrCodeCard key={`qr-code-${shape.id}`} shapeId={shape.id} controls={qrCode} disabled={locked} /> : null}
       {iconTag?.isTag ? (
         <IconTagCard key={`icon-tag-${shape.id}`} shapeId={shape.id} controls={iconTag} workspace={workspace} disabled={locked} onInteractionActiveChange={onInteractionActiveChange} />
       ) : iconTag ? (
@@ -3362,6 +3404,78 @@ export type IconTagControls = {
   onReplaceSvg: (file: File) => Promise<void>;
 };
 
+/** The QR code card's wiring (#553): the settings the code was made with, and making it again with a new text. */
+export type QrCodeControls = {
+  settings: QrCodeSettings;
+  onRegenerate: (text: string) => Promise<void>;
+};
+
+/**
+ * The QR code card, open and first: the code's text, and "Make again" to build the code anew with
+ * it - where it stands, as wide as it is now. The other choices stay as they were made.
+ */
+function QrCodeCard({ shapeId, controls, disabled }: { shapeId: string; controls: QrCodeControls; disabled: boolean }) {
+  const [open, setOpen] = useState(true);
+  const [text, setText] = useState(controls.settings.text);
+  const [busy, setBusy] = useState(false);
+  const [error, setError] = useState("");
+  useEffect(() => setText(controls.settings.text), [controls.settings.text]);
+  const fits = qrTextFits(text, controls.settings.errorCorrection);
+  const capacity = QR_BYTE_CAPACITY[controls.settings.errorCorrection];
+  const ready = Boolean(text) && fits && text !== controls.settings.text && !busy && !disabled;
+  const regenerate = () => {
+    if (!ready) return;
+    setBusy(true);
+    setError("");
+    controls.onRegenerate(text)
+      .catch((reason) => setError(reason instanceof Error ? localizedError(reason.message) : String(reason)))
+      .finally(() => setBusy(false));
+  };
+  return (
+    <div className={`property-card name-tag-card qr-code-card ${open ? "" : "collapsed"}`}>
+      <button className="property-card-header" type="button" aria-expanded={open} aria-controls={`qr-code-${shapeId}`} onClick={() => setOpen((current) => !current)}>
+        <span>{t("qrCode.title")}</span>
+        <ChevronUp className={open ? "" : "collapsed"} size={25} strokeWidth={2.8} />
+      </button>
+      {open ? (
+        <p className="name-tag-hint">
+          {t("qrCode.cardHint")}
+          <GuideHelpLink chapter="text" section="qrCode" className="inspector-help-link" />
+        </p>
+      ) : null}
+      {open ? (
+        <div className="property-list name-tag-body" id={`qr-code-${shapeId}`}>
+          <label className="qr-code-text">
+            <span>{t("qrCode.text")}</span>
+            <textarea
+              rows={3}
+              value={text}
+              disabled={disabled || busy}
+              aria-invalid={!fits}
+              data-testid="qr-code-card-text"
+              onChange={(event) => setText(event.currentTarget.value)}
+              onKeyDown={(event) => {
+                if (event.key === "Enter" && !event.shiftKey && !event.nativeEvent.isComposing) {
+                  event.preventDefault();
+                  regenerate();
+                }
+              }}
+            />
+            <small className={fits ? "" : "qr-code-warning"}>
+              {fits ? t("qrCode.count", { used: qrByteLength(text), max: capacity }) : t("qrCode.tooLong", { used: qrByteLength(text), max: capacity })}
+            </small>
+          </label>
+          <button className="inspector-action-button" type="button" disabled={!ready} onClick={regenerate}>
+            <RefreshCw size={17} strokeWidth={2.5} />
+            <span>{busy ? t("qrCode.building") : t("qrCode.regenerate")}</span>
+          </button>
+          {error ? <p className="name-tag-hint icon-tag-card-error" role="alert">{error}</p> : null}
+        </div>
+      ) : null}
+    </div>
+  );
+}
+
 /** A sketch body's way to an icon tag, first in its settings: one click splits it into the start layers. */
 function MakeIconLayersButton({ disabled, onLayer }: { disabled: boolean; onLayer: (patch: IconLayerPatch) => void }) {
   return (
@@ -3943,10 +4057,13 @@ function RangeProperty({
   const sliderValue = clamp(controlValue, controlMin, controlMax);
   const position = ((sliderValue - controlMin) / Math.max(Number.EPSILON, controlMax - controlMin)) * 100;
   const [editing, setEditing] = useState(false);
-  const [draft, setDraft] = useState(formatPropertyNumber(controlValue, accuracy, controlStep));
+  const [draft, setDraft] = useState(ROTATION_PROPERTY_IDS.has(id) ? String(Number(controlValue.toFixed(2))) : formatPropertyNumber(controlValue, accuracy, controlStep));
   const unit = isLength ? lengthDisplayUnit(workspace).label : ROTATION_PROPERTY_IDS.has(id) ? "°" : null;
   // Inches read as fractions (1⅝), like similar tools; the slider and typed decimals stay exact.
-  const formatShown = (shown: number) => (unit === "in" && showsInchFractions(workspace) ? formatFractionalInches(shown) : formatPropertyNumber(shown, accuracy, controlStep));
+  // An angle keeps two decimals (11.25 stays 11.25, #552); the other whole-step fields show whole numbers.
+  const formatShown = (shown: number) => (unit === "in" && showsInchFractions(workspace)
+    ? formatFractionalInches(shown)
+    : ROTATION_PROPERTY_IDS.has(id) ? String(Number(shown.toFixed(2))) : formatPropertyNumber(shown, accuracy, controlStep));
   const toModelValue = (nextValue: number) => isLength ? displayToMillimeters(nextValue, workspace) : nextValue;
   // The calculation the field was last set from comes back when it is entered (#180), as long as
   // the value still equals it; a value changed by a handle or the slider shows the number again.

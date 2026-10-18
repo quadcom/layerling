@@ -125,6 +125,27 @@ Le fichier SVG nécessite des contours fermés ; un dessin composé uniquement d
 
 **Une image (PNG ou JPG)** est vectorisée en contour, et l'aperçu affiche ce contour. Sous {{ui:iconTag.part}}, vous choisissez si c'est la partie {{ui:iconTag.part.dark}} ou {{ui:iconTag.part.light}} qui devient l'icône ; au départ, il s'agit de la partie qui n'est pas l'arrière-plan. Les pixels transparents ne font jamais partie de l'icône. Un fichier SVG ne contenant qu'une seule image (comme lorsqu'Inkscape enregistre un bitmap importé) est vectorisé de la même manière. Le contour suit les pixels, de sorte qu'une petite image aura des bords crénelés : les images de quelques centaines de pixels ou plus donnent les meilleurs résultats. {{ui:iconTag.replace}} prend la partie d'une image qui ne constitue pas son arrière-plan.
 
+## Codes QR
+
+Un code QR transforme un texte ou une adresse web en un motif que lit l'appareil photo d'un téléphone : un lien vers votre boutique sur une enseigne, le nom du Wi-Fi sur un sous-verre, un numéro de téléphone sur un porte-clés.
+
+Choisissez {{ui:shape.qrCode}} dans la bibliothèque de formes. Une fenêtre s'ouvre ; le curseur est déjà dans le champ de texte :
+
+- **{{ui:qrCode.text}} :** ce que dit le code. Entrée crée le code, Maj+Entrée commence une nouvelle ligne. Sous le champ, vous voyez la place utilisée ; les lettres accentuées et autres caractères spéciaux prennent deux octets. Quand le texte est trop long, le champ le dit.
+- **{{ui:qrCode.errorCorrection}} :** L, M, Q ou H. Un niveau plus élevé reste lisible quand une partie du code est sale ou rayée (L environ 7 %, M 15 %, Q 25 %, H 30 %), mais demande plus de modules pour le même texte, chaque module devient donc plus petit. M est choisi au départ.
+- **{{ui:qrCode.style}} :** {{ui:qrCode.style.code}} construit le code seul, haut de 4 mm. {{ui:qrCode.style.raised}} le pose à 1 mm de haut sur une plaque blanche de 3 mm, en lot de deux couleurs, pour qu'une impression multicolore imprime le code foncé et la plaque claire. {{ui:qrCode.style.engraved}} grave le code à 1 mm de profondeur dans la plaque.
+- **{{ui:qrCode.sizeBy}} :** saisissez la {{ui:qrCode.sizeBy.width}} du code entier (40 mm au départ) ou la taille d'un module ; l'autre valeur s'affiche dessous. Les modules de moins de 0,8 mm reçoivent un avertissement. C'est une règle empirique pour une buse de 0,4 mm, pas une garantie : imprimante, matériau, couleurs et téléphone jouent tous un rôle.
+- **{{ui:qrCode.quietZone}} :** les lecteurs ont besoin d'une marge vide de quatre modules autour du code. Sur une plaque, la marge fait partie de la plaque ; ne la désactivez que si la plaque repose sur une surface claire plus grande. Le code seul n'a pas de marge à lui : laissez la place libre autour.
+- **Hauteurs :** la hauteur du code, ou sur une plaque la hauteur du code ou la profondeur de gravure, et l'épaisseur de la plaque.
+
+L'aperçu montre le code tel qu'il sera construit. {{ui:qrCode.ok}} le place au milieu du plateau.
+
+Le code est un corps comme un autre : déplacez-le, tournez-le, redimensionnez-le (gardez la largeur et la profondeur égales, sinon le code est déformé), groupez-le, ou faites-en un trou et groupez-le dans une pièce à vous pour l'y graver. Le redimensionner redimensionne tout le code ; chaque module reste carré.
+
+La carte {{ui:qrCode.title}} en haut de ses réglages contient le texte. Modifiez-le et cliquez sur {{ui:qrCode.regenerate}} : le code est reconstruit là où il est et aussi large qu'il l'est maintenant. Correction d'erreur, zone de silence et construction restent telles qu'elles ont été choisies ; pour d'autres choix, créez un nouveau code depuis la bibliothèque.
+
+Scannez le code avec votre téléphone avant de l'imprimer, puis encore une fois après. Le foncé sur clair se lit le mieux ; un code clair sur une plaque foncée n'est pas lu par tous les téléphones.
+
 ## Texte sur un arc de cercle
 
 Le lettrage ne doit-il pas être droit mais suivre le bord d'une pièce de monnaie, d'un couvercle ou d'un anneau ? Pour cela il y a le paramètre {{ui:prop.textCurved}}.

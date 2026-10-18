@@ -155,6 +155,8 @@ export function mcpShapeSummary(shape: WorkplaneShape): LayerlingMcpShapeSummary
     ...(shape.kind === "text" && shape.textKeyring ? { textKeyring: shape.textKeyring } : {}),
     ...(shape.layeredText ? { layeredText: true } : {}),
     ...(shape.layeredIcon ? { layeredIcon: true } : {}),
+    // A QR code (#553): the text and the choices it was made with.
+    ...(shape.qrCode ? { qrCode: shape.qrCode } : {}),
     children: shape.groupedShapes?.map(mcpShapeSummary),
   };
 }

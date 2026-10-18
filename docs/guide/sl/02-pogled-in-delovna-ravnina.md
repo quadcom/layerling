@@ -27,7 +27,7 @@ Grafična tablica s pisalom se obnaša kot miška: konica je levi gumb, stranska
 
 Kocka zgoraj levo kaže, kam trenutno gledaš. Klik na eno od njenih stranic skoči v ravni pogled od zgoraj, spodaj, spredaj, zadaj, z leve ali z desne. Klik na oglišče kocke pogleda poševno od tega oglišča na model, klik blizu roba od tega roba, torej med dvema stranicama; mesto se obarva, ko kazalec stoji nad njim. Ravni pogledi gredo tudi s številskimi tipkami [[1]] do [[6]]. Če pri tem držiš [[Shift]], se pogled hkrati približa izboru, kot pri [[Shift]]+[[F]].
 
-Če kocko vlečeš, vrtiš pogled, popolnoma enako kot pri vlečenju z desnim gumbom. Če ni nič izbrano, pogled vrtijo tudi smerne tipke: 15° na pritisk, 90° s [[Shift]]. Model zavrtijo v svojo smer – [[→]] zavrti njegovo sprednjo stran v desno, [[↑]] nagne njegovo sprednjo stran navzgor. Če je nekaj izbrano, najprej klikni v prazno; sicer puščice premaknejo izbor. Na zaslonu na dotik to gre z enim prstom, tudi brez vklopa {{ui:camera.touchRotate}}.
+Če kocko vlečeš, vrtiš pogled, popolnoma enako kot pri vlečenju z desnim gumbom. Če ni nič izbrano, pogled vrtijo tudi smerne tipke: 15° na pritisk, 90° s [[Shift]]. Model zavrtijo v svojo smer – [[→]] zavrti njegovo sprednjo stran v desno, [[↑]] nagne njegovo sprednjo stran navzgor. Ob pridržani tipki [[Ctrl]] puščice namesto tega premikajo pogled po zaslonu: za desetino slike na pritisk, s [[Shift]] povrhu za polovico. Model se premakne v smer puščice. Če je nekaj izbrano, najprej klikni v prazno; sicer puščice premaknejo izbor. Na zaslonu na dotik to gre z enim prstom, tudi brez vklopa {{ui:camera.touchRotate}}.
 
 ### Vrstica kamere
 

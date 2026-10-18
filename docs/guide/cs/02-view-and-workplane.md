@@ -27,7 +27,7 @@ Grafický tablet s perem se chová jako myš: hrot zastupuje levé tlačítko, b
 
 Krychle vlevo nahoře ukazuje směr pohledu. Kliknutí na její stranu přepne na pohled shora, zdola, zepředu, zezadu, zleva nebo zprava. Kliknutí na roh zobrazí šikmý pohled z tohoto rohu, kliknutí u hrany pohled mezi dvěma stranami. Místo pod ukazatelem se zvýrazňuje. Kolmé pohledy mají také klávesy [[1]] až [[6]]. Se [[Shift]] se navíc přiblíží výběr, stejně jako při [[Shift]]+[[F]].
 
-Tažením krychle otáčíte pohledem jako pravým tlačítkem myši. Není-li nic vybráno, otáčejí pohledem i šipky: o 15° na stisknutí, se [[Shift]] o 90°. Model se otáčí ve směru šipky, tedy [[→]] obrací přední stranu doprava a [[↑]] ji naklání vzhůru. Při aktivním výběru šipky přesouvají objekty; pro otáčení nejprve klikněte na prázdné místo. Dotykem lze krychli otáčet jedním prstem i bez {{ui:camera.touchRotate}}.
+Tažením krychle otáčíte pohledem jako pravým tlačítkem myši. Není-li nic vybráno, otáčejí pohledem i šipky: o 15° na stisknutí, se [[Shift]] o 90°. Model se otáčí ve směru šipky, tedy [[→]] obrací přední stranu doprava a [[↑]] ji naklání vzhůru. S podrženou klávesou [[Ctrl]] šipky místo toho posouvají pohled po obrazovce: o desetinu obrazu na stisknutí, se [[Shift]] navíc o polovinu. Model se posouvá ve směru šipky. Při aktivním výběru šipky přesouvají objekty; pro otáčení nejprve klikněte na prázdné místo. Dotykem lze krychli otáčet jedním prstem i bez {{ui:camera.touchRotate}}.
 
 ### Lišta pohledu
 

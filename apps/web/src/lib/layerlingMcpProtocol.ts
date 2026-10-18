@@ -131,6 +131,7 @@ export type LayerlingMcpCommandName =
   | "bundle_objects"
   | "layer_text"
   | "layer_icon"
+  | "create_qr_code"
   | "set_section_view"
   | "set_history_view"
   | "restore_from_history"

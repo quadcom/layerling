@@ -2,21 +2,33 @@ import manifoldModule, { type ManifoldToplevel } from "manifold-3d";
 import { beforeAll, describe, expect, it } from "vitest";
 import { cadModifierGridfinityForShape } from "@/lib/cadProfileExtrusion";
 import { editorHistoryEntry } from "@/lib/editorHistory";
+import { meshForShape } from "@/lib/editorMeshCore";
 import { exportLylProject, importLylProject } from "@/lib/lylProject";
 import { rememberManifoldRuntime } from "@/lib/manifoldHandle";
-import { sceneShape } from "@/lib/shapeCatalog";
-import { DEFAULT_SNAP_GRID, DEFAULT_WORKPLANE_WORKSPACE } from "@/lib/workplaneSettings";
+import { makeShapeFromAsset, sceneShape, toolbarShapeAssets } from "@/lib/shapeCatalog";
+import { DEFAULT_SNAP_GRID, DEFAULT_WORKPLANE_WORKSPACE, normalizeShapeCustomizations } from "@/lib/workplaneSettings";
+import { shapeDefaultsFromShape } from "@/lib/shapeDefaults";
 import { canonicalizeShape, workplaneShapesEqual } from "@/lib/workplaneShapes";
 import type { WorkplaneShape } from "@/types/layerling";
 import {
   GRIDFINITY_LABEL_WALL_KEYS,
   GRIDFINITY_LIP_HEIGHT,
+  GRIDFINITY_SCOOP_WALL_KEYS,
+  createGridfinityGeometry,
+  gridfinityFloorFits,
+  gridfinityFloorHeight,
+  gridfinityFloorMaxHeight,
   gridfinityFootprintPatch,
+  gridfinityLabelCornerSize,
+  gridfinityLabelFits,
   gridfinityLabelLength,
   gridfinityLabelLimits,
   gridfinityLabelledTriangles,
   gridfinityLabelPieces,
   gridfinityPlan,
+  gridfinityScoopFits,
+  gridfinityScoopPieces,
+  gridfinityScoopRadius,
   gridfinityShapePatch,
   gridfinityTriangles,
   gridfinityUnits,
@@ -682,6 +694,8 @@ describe("gridfinity label shelf", () => {
     const shelved = binShape(settings);
     expect(cadModifierGridfinityForShape(shelved)).toBeNull();
     expect(cadModifierGridfinityForShape({ ...shelved, gridfinityLabelBack: false })).not.toBeNull();
+    // So is a finger scoop.
+    expect(cadModifierGridfinityForShape(binShape({ gridfinityScoopFront: true }))).toBeNull();
     rememberManifoldRuntime(runtime);
     expect(cadModifierGridfinityForShape(shelved)).toMatchObject(settings);
   });
@@ -706,5 +720,426 @@ describe("gridfinity label shelf", () => {
     expect(chamfered.corners.map(({ size }) => size)).toEqual([10, 10]);
     const long = gridfinityLabelPieces(bin({ gridfinityLabelBack: true, gridfinityLabelBackLength: 200 }))!.shelves[0].profile;
     expect(long.to - long.from).toBeGreaterThan(81.6);
+  });
+});
+
+describe("gridfinity finger scoop", () => {
+  let runtime: ManifoldToplevel;
+
+  beforeAll(async () => {
+    runtime = await manifoldModule();
+    runtime.setup();
+  });
+
+  // What the scoops (and any shelves) add to the bin's own mesh, which has the floor rounding already.
+  const added = (fields: Record<string, unknown>) => signedVolume(gridfinityLabelledTriangles(runtime, bin(fields))) - signedVolume(gridfinityTriangles(bin(fields)));
+
+  it("leaves a bin without a scoop exactly as it was, also with a radius set", () => {
+    expect(gridfinityScoopPieces(bin({ gridfinityScoopRadius: 5 }))).toBeNull();
+    expect(gridfinityLabelledTriangles(runtime, bin({ gridfinityScoopRadius: 5 }))).toEqual(gridfinityTriangles(bin()));
+    expect(gridfinityScoopPieces(plate({ gridfinityScoopFront: true }))).toBeNull();
+    // A bin of one height unit has no room for a scoop of 3.5 mm, with the lip or without (1.05 mm of wall).
+    expect(gridfinityScoopPieces(bin({ height: 7 + GRIDFINITY_LIP_HEIGHT, gridfinityScoopFront: true }))).toBeNull();
+    expect(gridfinityScoopPieces(bin({ height: 7, gridfinityLip: false, gridfinityScoopFront: true }))).toBeNull();
+    expect(gridfinityScoopFits(bin({ height: 14 + GRIDFINITY_LIP_HEIGHT }))).toBe(true);
+  });
+
+  it("is half the depth up to the lip's support unless set, at least 3.5 mm, keeps 0.5 mm of straight wall above it, and leaves 2 mm of floor between two", () => {
+    // 3 units with the lip: 21 - 5.95 - 1.65 = 13.4 deep; without the lip 15.05; 6 units 34.4.
+    expect(gridfinityScoopRadius(bin({ gridfinityScoopFront: true }))).toBeCloseTo(6.7, 9);
+    expect(gridfinityScoopRadius(bin({ gridfinityScoopFront: true, gridfinityLip: false, height: 21 }))).toBeCloseTo(7.525, 9);
+    expect(gridfinityScoopRadius(bin({ gridfinityScoopFront: true, height: 42 + GRIDFINITY_LIP_HEIGHT }))).toBeCloseTo(17.2, 9);
+    expect(gridfinityScoopRadius(bin({ gridfinityScoopFront: true, gridfinityScoopRadius: 4 }))).toBe(4);
+    expect(gridfinityScoopRadius(bin({ gridfinityScoopFront: true, gridfinityScoopRadius: 30 }))).toBeCloseTo(12.9, 9);
+    // Two height units with the lip: 14 - 5.95 - 1.65 = 6.4 deep, half of it under the smallest radius, at most 5.9.
+    expect(gridfinityScoopRadius(bin({ gridfinityScoopFront: true, height: 14 + GRIDFINITY_LIP_HEIGHT }))).toBe(3.5);
+    expect(gridfinityScoopRadius(bin({ gridfinityScoopFront: true, height: 14 + GRIDFINITY_LIP_HEIGHT, gridfinityScoopRadius: 30 }))).toBeCloseTo(5.9, 9);
+    // Never under 3.5 mm, clear of the floor's 2.8 mm rounding.
+    expect(gridfinityScoopRadius(bin({ gridfinityScoopFront: true, gridfinityScoopRadius: 0.1 }))).toBe(3.5);
+    // 12 units high: 84 - 7.6 = 76.4 deep, but the bin is 39.6 deep inside: one scoop stops 2 mm short of the wall opposite,
+    // two facing each other 1 mm short of the middle.
+    expect(gridfinityScoopRadius(bin({ gridfinityScoopFront: true, height: 84 + GRIDFINITY_LIP_HEIGHT, gridfinityScoopRadius: 50 }))).toBeCloseTo(37.6, 9);
+    expect(gridfinityScoopRadius(bin({ gridfinityScoopFront: true, gridfinityScoopBack: true, height: 84 + GRIDFINITY_LIP_HEIGHT, gridfinityScoopRadius: 50 }))).toBeCloseTo(18.8, 9);
+  });
+
+  it("draws a radius within 0.03 mm of the one through the corner of the floor's rounding 0.03 mm below that", () => {
+    // The sunk circle runs through the point 2.8 mm out from the scoop's wall and up from the floor, where the end wall's
+    // corner rounding meets the floor's, at (2.8 + 0.02) / (1 - 1/sqrt(2)) = 9.6281 mm.
+    const drawn = (gridfinityScoopRadius: number) => gridfinityScoopPieces(bin({ height: 28 + GRIDFINITY_LIP_HEIGHT, gridfinityScoopBack: true, gridfinityScoopRadius }))!.radius;
+    for (const r of [9.6, 9.628, 9.65]) expect(drawn(r)).toBeCloseTo(9.5981, 4);
+    for (const r of [9.5, 9.59, 9.67, 10]) expect(drawn(r)).toBe(r);
+  });
+
+  it("is closed, wound outwards and one piece on any walls, with the lip or without, beside label shelves and magnets", () => {
+    for (const fields of [
+      { gridfinityScoopFront: true },
+      { gridfinityScoopBack: true },
+      { gridfinityScoopLeft: true },
+      { gridfinityScoopRight: true },
+      { gridfinityScoopFront: true, gridfinityScoopLeft: true },
+      { gridfinityScoopFront: true, gridfinityScoopBack: true, gridfinityScoopLeft: true, gridfinityScoopRight: true },
+      { gridfinityScoopFront: true, gridfinityLip: false, height: 21 },
+      { gridfinityScoopFront: true, gridfinityLip: false, height: 14 },
+      { gridfinityScoopFront: true, height: 14 + GRIDFINITY_LIP_HEIGHT },
+      { gridfinityScoopFront: true, gridfinityScoopRadius: 3.5 },
+      { gridfinityScoopFront: true, gridfinityScoopBack: true, height: 140 + GRIDFINITY_LIP_HEIGHT, gridfinityScoopRadius: 100 },
+      { gridfinityScoopFront: true, gridfinityLabelBack: true },
+      { gridfinityScoopFront: true, gridfinityLabelFront: true, gridfinityLabelFrontWidth: 17 },
+      { gridfinityScoopLeft: true, gridfinityLabelBack: true, gridfinityLabelLeft: true, gridfinityMagnets: true },
+      { width: 251.5, depth: 251.5, height: 42 + GRIDFINITY_LIP_HEIGHT, gridfinityScoopFront: true, gridfinityScoopRight: true, gridfinityLabelBack: true },
+      // Two scoops meeting on the crease of a round corner, which a move of the pieces onto it would pinch (LABEL_MESH_NUDGE).
+      { width: 41.5, depth: 41.5, height: 14 + GRIDFINITY_LIP_HEIGHT, gridfinityScoopBack: true, gridfinityScoopRight: true, gridfinityScoopRadius: 5.9 },
+      { width: 41.5, depth: 41.5, height: 14 + GRIDFINITY_LIP_HEIGHT, gridfinityScoopBack: true, gridfinityScoopLeft: true, gridfinityScoopRadius: 5.9 },
+      { gridfinityScoopFront: true, height: 14 + GRIDFINITY_LIP_HEIGHT, width: 41.5 },
+      { gridfinityScoopFront: true, gridfinityScoopBack: true, gridfinityScoopLeft: true, gridfinityScoopRight: true, gridfinityScoopRadius: 12 },
+      { gridfinityScoopLeft: true, gridfinityLip: false, height: 14 },
+      { gridfinityScoopBack: true, gridfinityLabelBack: true, gridfinityLabelLeft: true, gridfinityMagnets: true },
+      { width: 251.5, depth: 251.5, height: 140 + GRIDFINITY_LIP_HEIGHT, gridfinityScoopFront: true, gridfinityScoopRadius: 100 },
+    ]) {
+      // The bin's own mesh, with its floor rounded, is closed too.
+      const plain = gridfinityTriangles(bin(fields));
+      expect(edgeProblems(plain)).toBe(0);
+      expect(components(plain)).toBe(1);
+      const triangles = gridfinityLabelledTriangles(runtime, bin(fields));
+      expect(edgeProblems(triangles)).toBe(0);
+      expect(components(triangles)).toBe(1);
+      expect(added(fields)).toBeGreaterThan(0.5);
+    }
+  });
+
+  it("draws the scoops in the viewport once Manifold has loaded", () => {
+    rememberManifoldRuntime(runtime);
+    const count = (fields: Record<string, unknown>) => createGridfinityGeometry(bin(fields)).getAttribute("position").count;
+    expect(count({ gridfinityScoopFront: true })).toBeGreaterThan(count({}));
+    // And in the mesh that booleans and the exact body's check use, with every wall and the radius passed on.
+    const all = { gridfinityScoopBack: true, gridfinityScoopFront: true, gridfinityScoopLeft: true, gridfinityScoopRight: true, gridfinityScoopRadius: 4 };
+    const mesh = meshForShape(binShape(all));
+    const volume = signedVolume(mesh.faces.map((face) => face.map((i) => mesh.vertices[i]) as V[]));
+    expect(volume).toBeCloseTo(signedVolume(gridfinityLabelledTriangles(runtime, bin(all))), 3);
+  });
+
+  it("adds a quarter circle's corner along the whole wall: about r squared times (1 - pi / 4) over the inside length", () => {
+    // Over the floor's 2.8 mm rounding, which the wall has anyway: 2 x 1 x 3 units without the lip, r 7.525 with its circle
+    // sunk 0.02 mm, 11.87 mm2, less the rounding's 1.68 mm2, over the back wall's 81.6 mm (831 mm3), less what the round
+    // inner corners take off.
+    const volume = added({ gridfinityScoopBack: true, gridfinityLip: false, height: 21 });
+    expect(volume).toBeGreaterThan(800);
+    expect(volume).toBeLessThan(840);
+    // With the lip, r 6.7: 9.38 - 1.68 mm2, 628 mm3 at most.
+    const lipped = added({ gridfinityScoopBack: true });
+    expect(lipped).toBeGreaterThan(600);
+    expect(lipped).toBeLessThan(632);
+  });
+
+  it("rounds into the wall: the floor rises along a quarter circle to the wall, which stands straight above it", () => {
+    // The left wall of a 2 x 1 x 3 bin without the lip: inside at x = -40.8, floor at 5.95, r 7.525, the centre
+    // r - 0.02 out from the wall and up from the floor.
+    const r = 7.525;
+    const c = r - 0.02;
+    const triangles = gridfinityLabelledTriangles(runtime, bin({ gridfinityScoopLeft: true, gridfinityLip: false, height: 21 }));
+    const wall = (y: number) => crossings(triangles, y)[1];
+    for (const rise of [1, 3, 6]) expect(wall(5.95 + rise)).toBeCloseTo(-40.8 + c - Math.sqrt(r * r - (c - rise) ** 2), 2);
+    expect(wall(5.95 + r + 1)).toBeCloseTo(-40.8, 2);
+    // The right wall has no scoop, only the floor's 2.8 mm rounding: at 1.05 mm up, 2.8 - sqrt(2.8^2 - 1.75^2) = 0.614 in.
+    expect(crossings(triangles, 7).at(-2)).toBeCloseTo(40.8 - 0.614, 1);
+  });
+
+  it("rounds every floor edge of a bin with a scoop by 2.8 mm, the inner corners' radius, and leaves a bin without one sharp", () => {
+    // Across the middle of a 2 x 1 x 3 bin with a front scoop, at 1 mm above the floor (5.95): the left and right walls
+    // (no scoop) stand 0.95 + 2.8 - sqrt(2.8^2 - 1.8^2) = 1.605 in from the outline at 41.75.
+    const rounded = gridfinityLabelledTriangles(runtime, bin({ gridfinityScoopFront: true }));
+    const walls = crossings(rounded, 6.95);
+    expect(walls[1]).toBeCloseTo(-41.75 + 1.605, 1);
+    expect(walls.at(-2)).toBeCloseTo(41.75 - 1.605, 1);
+    // 3 mm up the walls stand straight again.
+    expect(crossings(rounded, 9)[1]).toBeCloseTo(-40.8, 5);
+    // Without a scoop the floor meets the wall in a sharp edge, as before.
+    expect(crossings(gridfinityTriangles(bin()), 6.95)[1]).toBeCloseTo(-40.8, 5);
+    expect(gridfinityPlan(bin()).floorRounding).toBe(0);
+    expect(gridfinityPlan(bin({ gridfinityScoopFront: true })).floorRounding).toBeCloseTo(2.8, 9);
+    // A bin with no room for a scoop is not rounded either.
+    expect(gridfinityPlan(bin({ gridfinityScoopFront: true, gridfinityLip: false, height: 7 })).floorRounding).toBe(0);
+  });
+
+  it("tells every scoop setting apart and keeps them all through a saved project", async () => {
+    const settings: Record<string, unknown> = { gridfinityScoopRadius: 4.5 };
+    Object.values(GRIDFINITY_SCOOP_WALL_KEYS).forEach((key) => Object.assign(settings, { [key]: true }));
+    const scooped = canonicalizeShape(binShape(settings));
+    Object.entries(settings).forEach(([key, value]) => {
+      expect(workplaneShapesEqual(scooped, { ...scooped, [key]: typeof value === "boolean" ? !value : (value as number) + 1 })).toBe(false);
+    });
+    const exported = await exportLylProject({
+      projectId: "scoops",
+      projectName: "Scoops",
+      createdAt: 1_700_000_000_000,
+      modifiedAt: 1_700_000_100_000,
+      shapes: [scooped],
+      history: [editorHistoryEntry([scooped], [])],
+      historyIndex: 0,
+      assets: [],
+      workspace: DEFAULT_WORKPLANE_WORKSPACE,
+      snapGrid: DEFAULT_SNAP_GRID,
+      placementElevation: 0,
+    });
+    const [loaded] = (await importLylProject(exported)).shapes;
+    expect(workplaneShapesEqual(loaded, scooped)).toBe(true);
+    expect(loaded).toMatchObject(settings);
+    expect(sceneShape(scooped)).toMatchObject(settings);
+    expect(cadModifierGridfinityForShape(scooped)).toMatchObject(settings);
+    // The settings an MCP action passes on keep them, and so does a bin kept as the default for new ones.
+    expect(normalizeShapeCustomizations({ gridfinity: settings }, {})).toMatchObject({ gridfinity: settings });
+    expect(shapeDefaultsFromShape(scooped)).toMatchObject(settings);
+    const asset = toolbarShapeAssets.find((entry) => entry.kind === "gridfinity")!;
+    expect(makeShapeFromAsset(asset, { x: 0, z: 0 }, settings)).toMatchObject(settings);
+  });
+});
+
+describe("gridfinity half-size grid", () => {
+  let runtime: ManifoldToplevel;
+
+  beforeAll(async () => {
+    runtime = await manifoldModule();
+    runtime.setup();
+  });
+
+  const half = (fields: Record<string, unknown> = {}) => bin({ gridfinityHalfGrid: true, ...fields });
+
+  it("leaves a bin with the setting off, and every baseplate, exactly as it was", () => {
+    expect(gridfinityTriangles(bin({ gridfinityHalfGrid: false }))).toEqual(gridfinityTriangles(bin()));
+    expect(gridfinityTriangles(plate({ gridfinityHalfGrid: true }))).toEqual(gridfinityTriangles(plate()));
+    expect(gridfinityPlan(plate({ gridfinityHalfGrid: true })).size).toEqual({ width: 84, depth: 42, height: 5 });
+  });
+
+  it("counts cells of 21 mm, a bin 0.5 mm smaller, up to 12 of them: the 251.5 mm of 6 whole units", () => {
+    expect(gridfinityPlan(half({ width: 20.5, depth: 62.5 })).size).toEqual({ width: 20.5, depth: 62.5, height: 25.4 });
+    expect(gridfinityUnits(half({ width: 20.5, depth: 62.5 }))).toEqual({ x: 1, z: 3, y: 3 });
+    expect(gridfinityUnits(half({ width: 1000, depth: 1 }))).toMatchObject({ x: 12, z: 1 });
+    expect(gridfinityFootprintPatch(half({ width: 1000, depth: 1 }))).toMatchObject({ width: 251.5, depth: 20.5 });
+    // A drag snaps to 21 mm cells: 30 mm is 1.45 cells, 33 mm 1.6.
+    expect(gridfinityFootprintPatch(half({ width: 30, depth: 33 }))).toMatchObject({ width: 20.5, depth: 41.5 });
+  });
+
+  it("keeps the outline when switched on, and rounds to whole units when switched off", () => {
+    // 2 x 1 whole units are 4 x 2 half units of the same 83.5 x 41.5; 6 x 6 are 12 x 12, and 12 is as many as there can be.
+    expect(gridfinityShapePatch(bin(), { halfGrid: true })).toMatchObject({ gridfinityHalfGrid: true, width: 83.5, depth: 41.5 });
+    expect(gridfinityShapePatch(bin({ width: 251.5, depth: 251.5 }), { halfGrid: true })).toMatchObject({ width: 251.5, depth: 251.5 });
+    expect(gridfinityShapePatch(half(), { x: 12, z: 13 })).toMatchObject({ width: 251.5, depth: 251.5 });
+    // 3 half units (62.5) round to 2 whole ones, 1 half unit to 1.
+    expect(gridfinityShapePatch(half({ width: 62.5, depth: 20.5 }), { halfGrid: false })).toMatchObject({ gridfinityHalfGrid: false, width: 83.5, depth: 41.5 });
+    // A half bin turned into a baseplate keeps its outline in whole units, and back again; an odd count is read as the
+    // baseplate reads a size given to it, without the bin's 0.5 mm: 62.5 mm is 1 unit, as canonicalizeShape makes it.
+    expect(gridfinityShapePatch(half(), { type: "baseplate" })).toMatchObject({ width: 84, depth: 42, height: 5 });
+    expect(gridfinityShapePatch(half({ width: 62.5 }), { type: "baseplate" })).toMatchObject({ width: 42 });
+    expect(gridfinityFootprintPatch({ ...half({ width: 62.5 }), gridfinityType: "baseplate" })).toMatchObject({ width: 42 });
+    expect(gridfinityShapePatch(plate({ gridfinityHalfGrid: true }), { type: "bin" })).toMatchObject({ width: 83.5, depth: 41.5 });
+    // Other changes leave the setting as it is.
+    expect(gridfinityShapePatch(bin(), { lip: false })).not.toHaveProperty("gridfinityHalfGrid");
+  });
+
+  it("puts a foot under every 21 mm cell: 20.5 mm at the top, the specification's steps, 14.6 mm at the bottom", () => {
+    // 2 x 1 half units: cells at x = -10.5 and 10.5. On the straight step (y 2) a foot is 10.25 - 2.15 = 8.1 from its middle;
+    // at the bottom 10.25 - 2.95 = 7.3, widening at 45 degrees to 7.7 at y 0.4.
+    const triangles = gridfinityTriangles(half({ width: 41.5, depth: 20.5 }));
+    crossings(triangles, 2).forEach((x, i) => expect(x).toBeCloseTo([-18.6, -2.4, 2.4, 18.6][i], 9));
+    crossings(triangles, 0.4).forEach((x, i) => expect(x).toBeCloseTo([-10.5 - 7.7, -10.5 + 7.7, 10.5 - 7.7, 10.5 + 7.7][i], 9));
+    expect(crossings(triangles, 2)).toHaveLength(4);
+  });
+
+  it("is closed, wound outwards and one piece, with the lip, magnets, label shelves and scoops", () => {
+    for (const fields of [
+      { width: 20.5, depth: 20.5 },
+      { width: 20.5, depth: 20.5, gridfinityLip: false, gridfinityMagnets: true },
+      { width: 62.5, depth: 41.5, gridfinityMagnets: true },
+      { width: 251.5, depth: 251.5, height: 7 + GRIDFINITY_LIP_HEIGHT, gridfinityMagnets: true },
+      { width: 20.5, depth: 20.5, gridfinityLabelBack: true, gridfinityLabelFront: true, gridfinityLabelLeft: true, gridfinityLabelRight: true, gridfinityLabelCornerSize: 10 },
+      { width: 62.5, depth: 20.5, gridfinityLabelBack: true, gridfinityScoopFront: true, gridfinityScoopLeft: true },
+    ]) {
+      const triangles = gridfinityLabelledTriangles(runtime, half(fields));
+      expect(edgeProblems(triangles)).toBe(0);
+      expect(signedVolume(triangles)).toBeGreaterThan(0);
+      expect(components(triangles)).toBe(1);
+    }
+  });
+
+  it("drills the magnet holes where a baseplate has them: one a foot, 2.5 mm towards its cell's corner on the 42 mm grid", () => {
+    const holes = (fields: Record<string, unknown>) => gridfinityPlan(half({ gridfinityMagnets: true, ...fields })).magnetHoles.map(({ x, z }) => [x, z].map((n) => Number(n.toFixed(9))));
+    // 2 x 2 half units: where a bin of one whole unit has them.
+    expect(holes({ width: 41.5, depth: 41.5 }).sort()).toEqual([[-13, -13], [-13, 13], [13, -13], [13, 13]].sort());
+    expect(holes({ width: 20.5, depth: 20.5 })).toEqual([[-2.5, -2.5]]);
+    // 3 x 1: cells at x = -21, 0 and 21; the middle one's grid corner is on its right.
+    expect(holes({ width: 62.5, depth: 20.5 })).toEqual([[-23.5, -2.5], [2.5, -2.5], [18.5, -2.5]]);
+  });
+
+  it("keeps the shelves' corners small enough in a bin of one half unit to leave 2 mm open between facing shelves", () => {
+    // 18.6 mm inside: shelves of 4 mm on both sides and corner pieces of at most 9.3 - 1 - 4 = 4.3 mm.
+    const pieces = gridfinityLabelPieces(half({ width: 20.5, depth: 20.5, gridfinityLabelBack: true, gridfinityLabelFront: true, gridfinityLabelCornerSize: 10 }))!;
+    expect(pieces.shelves.map(({ profile }) => profile.width)).toEqual([4, 4]);
+    pieces.corners.forEach(({ size }) => expect(size).toBeLessThanOrEqual(4.3 + 1e-9));
+    // The Corner size field shows what is built.
+    expect(gridfinityLabelCornerSize(half({ width: 20.5, depth: 20.5, gridfinityLabelCornerSize: 10 }))).toBeCloseTo(4.3, 9);
+    // A bin of whole units keeps its 10 mm corners.
+    expect(Math.max(...gridfinityLabelPieces(bin({ gridfinityLabelBack: true, gridfinityLabelCornerSize: 10 }))!.corners.map(({ size }) => size))).toBe(10);
+  });
+
+  it("keeps a half bin's size through a saved project, a new shape and the exact body", async () => {
+    const shape = canonicalizeShape(binShape({ gridfinityHalfGrid: true, width: 20.5, depth: 62.5, size: 62.5 }));
+    expect(shape).toMatchObject({ width: 20.5, depth: 62.5 });
+    expect(workplaneShapesEqual(shape, { ...shape, gridfinityHalfGrid: false })).toBe(false);
+    const exported = await exportLylProject({
+      projectId: "half",
+      projectName: "Half",
+      createdAt: 1_700_000_000_000,
+      modifiedAt: 1_700_000_100_000,
+      shapes: [shape],
+      history: [editorHistoryEntry([shape], [])],
+      historyIndex: 0,
+      assets: [],
+      workspace: DEFAULT_WORKPLANE_WORKSPACE,
+      snapGrid: DEFAULT_SNAP_GRID,
+      placementElevation: 0,
+    });
+    const [loaded] = (await importLylProject(exported)).shapes;
+    expect(loaded).toMatchObject({ gridfinityHalfGrid: true, width: 20.5, depth: 62.5 });
+    expect(sceneShape(shape)).toMatchObject({ gridfinityHalfGrid: true });
+    const asset = toolbarShapeAssets.find((entry) => entry.kind === "gridfinity")!;
+    expect(canonicalizeShape(makeShapeFromAsset(asset, { x: 0, z: 0 }, { gridfinityHalfGrid: true, width: 20.5, depth: 20.5 }))).toMatchObject({ width: 20.5, depth: 20.5, gridfinityHalfGrid: true });
+    expect(cadModifierGridfinityForShape(shape)).toMatchObject({ gridfinityHalfGrid: true, width: 20.5, depth: 62.5 });
+    // The mesh that booleans and the exact body's check use has a foot under every cell: three under this bin, one under a whole one.
+    const lowest = (s: WorkplaneShape) => meshForShape(s).vertices.filter(([, y]) => Math.abs(y) < 1e-6).length;
+    expect(lowest(shape)).toBe(3 * lowest(canonicalizeShape(binShape({ width: 41.5, depth: 41.5, size: 41.5 }))));
+    // The settings an MCP action passes on keep it, and so does a half bin kept as the default for new ones.
+    expect(normalizeShapeCustomizations({ gridfinity: { gridfinityHalfGrid: true } }, {})).toMatchObject({ gridfinity: { gridfinityHalfGrid: true } });
+    expect(shapeDefaultsFromShape(shape)).toMatchObject({ gridfinityHalfGrid: true, width: 20.5, depth: 62.5 });
+  });
+});
+
+describe("gridfinity floor height", () => {
+  let runtime: ManifoldToplevel;
+
+  beforeAll(async () => {
+    runtime = await manifoldModule();
+    runtime.setup();
+  });
+
+  /** The inside of a 2 x 1 bin: 81.6 x 39.6 mm with corners of 2.8 mm. */
+  const insideArea = 81.6 * 39.6 - (4 - Math.PI) * 2.8 * 2.8;
+
+  it("leaves a bin with the floor unset or at 5.95 mm, a bin of 1 height unit with the lip and a baseplate exactly as they were", () => {
+    expect(gridfinityTriangles(bin({ gridfinityFloorHeight: 5.95 }))).toEqual(gridfinityTriangles(bin()));
+    expect(gridfinityTriangles(bin({ gridfinityFloorHeight: 2 }))).toEqual(gridfinityTriangles(bin()));
+    // 1 unit with the lip: its support reaches the wall at 7 - 1.65 = 5.35, under the floor, so there is nothing to raise.
+    const low = { height: 7 + GRIDFINITY_LIP_HEIGHT };
+    expect(gridfinityFloorFits(bin(low))).toBe(false);
+    expect(gridfinityTriangles(bin({ ...low, gridfinityFloorHeight: 20 }))).toEqual(gridfinityTriangles(bin(low)));
+    expect(gridfinityTriangles(plate({ gridfinityFloorHeight: 4 }))).toEqual(gridfinityTriangles(plate()));
+  });
+
+  it("rises to where the lip's support leaves the wall, 1.65 mm under the top, or to the top of a bin without the lip", () => {
+    expect(gridfinityFloorHeight(bin())).toBeCloseTo(5.95, 9);
+    expect(gridfinityFloorMaxHeight(bin())).toBeCloseTo(19.35, 9);
+    expect(gridfinityFloorHeight(bin({ gridfinityFloorHeight: 30 }))).toBeCloseTo(19.35, 9);
+    expect(gridfinityFloorHeight(bin({ gridfinityFloorHeight: 12 }))).toBe(12);
+    expect(gridfinityFloorMaxHeight(bin({ gridfinityLip: false, height: 21 }))).toBe(21);
+    expect(gridfinityFloorFits(bin({ gridfinityLip: false, height: 7 }))).toBe(true);
+    expect(gridfinityFloorMaxHeight(bin({ gridfinityLip: false, height: 7 }))).toBe(7);
+    // The feet of a bin stacked on the lip reach 0.35 mm into it: the highest floor stays 1.3 mm under them.
+    expect(gridfinityFloorMaxHeight(bin())).toBeLessThanOrEqual(21 - 0.35 - 1.3 + 1e-9);
+    // Within 0.05 mm of the highest it is raised onto it, so no sliver of wall is left.
+    expect(gridfinityFloorHeight(bin({ gridfinityFloorHeight: 19.32 }))).toBeCloseTo(19.35, 9);
+    expect(gridfinityFloorHeight(bin({ gridfinityFloorHeight: 19.2 }))).toBe(19.2);
+    expect(gridfinityFloorHeight(bin({ gridfinityLip: false, height: 21, gridfinityFloorHeight: 20.99 }))).toBe(21);
+    // 0.05 under the highest, where the field's 0.05 mm steps end, is raised onto it too.
+    expect(gridfinityFloorHeight(bin({ gridfinityLip: false, height: 21, gridfinityFloorHeight: 20.95 }))).toBe(21);
+    expect(gridfinityFloorHeight(bin({ gridfinityLip: false, height: 21, gridfinityFloorHeight: 20.9 }))).toBe(20.9);
+  });
+
+  it("fills the bin up to the floor: the inside's area times the rise", () => {
+    // Within 0.1 %: the mesh draws the 2.8 mm corners as polygons.
+    const plain = signedVolume(gridfinityTriangles(bin()));
+    const raised = (gridfinityFloorHeight: number) => signedVolume(gridfinityTriangles(bin({ gridfinityFloorHeight }))) - plain;
+    expect(raised(10) / (insideArea * (10 - 5.95))).toBeCloseTo(1, 3);
+    expect(raised(30) / (insideArea * (19.35 - 5.95))).toBeCloseTo(1, 3);
+  });
+
+  it("leaves a bin without the lip raised to the top as one solid block", () => {
+    const triangles = gridfinityTriangles(bin({ gridfinityLip: false, height: 21, gridfinityFloorHeight: 21 }));
+    // At 15 mm up the only walls a line crosses are the outer ones.
+    expect(crossings(triangles, 15)).toHaveLength(2);
+    crossings(triangles, 15).forEach((x, i) => expect(x).toBeCloseTo([-41.75, 41.75][i], 9));
+    expect(bounds(triangles).max[1]).toBe(21);
+  });
+
+  it("is closed, wound outwards and one piece at any height, with the lip or without, shelves, scoops, magnets and the half-size grid", () => {
+    for (const fields of [
+      { gridfinityFloorHeight: 10 },
+      { gridfinityFloorHeight: 19.35 },
+      { gridfinityFloorHeight: 19.345 },
+      { gridfinityFloorHeight: 19.34 },
+      { gridfinityFloorHeight: 30, gridfinityMagnets: true },
+      { gridfinityLip: false, height: 21, gridfinityFloorHeight: 21 },
+      { gridfinityLip: false, height: 21, gridfinityFloorHeight: 20.99 },
+      { gridfinityLip: false, height: 21, gridfinityFloorHeight: 20.999 },
+      { gridfinityLip: false, height: 7, gridfinityFloorHeight: 7 },
+      { gridfinityFloorHeight: 9, gridfinityScoopFront: true, gridfinityScoopLeft: true, gridfinityLabelBack: true },
+      { height: 42 + GRIDFINITY_LIP_HEIGHT, gridfinityFloorHeight: 20, gridfinityScoopBack: true, gridfinityLabelFront: true, gridfinityLabelLeft: true },
+      { gridfinityFloorHeight: 15.5, gridfinityLabelBack: true, gridfinityLabelFront: true },
+      { gridfinityHalfGrid: true, width: 20.5, depth: 41.5, gridfinityFloorHeight: 12, gridfinityMagnets: true },
+    ]) {
+      const triangles = gridfinityLabelledTriangles(runtime, bin(fields));
+      expect(edgeProblems(triangles)).toBe(0);
+      expect(signedVolume(triangles)).toBeGreaterThan(0);
+      expect(components(triangles)).toBe(1);
+    }
+  });
+
+  it("starts the scoops on the raised floor, narrows the shelves above it, and leaves both out once it leaves them no room", () => {
+    // A scoop rises from the floor to the lip's support: 21 - 10 - 1.65 = 9.35 mm, half of it by default.
+    expect(gridfinityScoopRadius(bin({ gridfinityScoopFront: true, gridfinityFloorHeight: 10 }))).toBeCloseTo(4.675, 9);
+    expect(gridfinityScoopPieces(bin({ gridfinityScoopFront: true, gridfinityFloorHeight: 10 }))!.floor).toBe(10);
+    // It needs 3.5 + 0.5 mm: up to a floor of 21 - 1.65 - 4 = 15.35.
+    expect(gridfinityScoopFits(bin({ gridfinityFloorHeight: 15.35 }))).toBe(true);
+    expect(gridfinityScoopFits(bin({ gridfinityFloorHeight: 15.4 }))).toBe(false);
+    expect(gridfinityScoopPieces(bin({ gridfinityScoopFront: true, gridfinityFloorHeight: 15.4 }))).toBeNull();
+    // A shelf's underside ends 0.5 mm above the floor and the narrowest shelf is 4 mm: up to a floor of
+    // 21 - 0.85 - 1.2 - 0.5 - 4 tan 36 = 15.54.
+    expect(gridfinityLabelPieces(bin({ gridfinityLabelBack: true, gridfinityFloorHeight: 15.5 }))!.floor).toBe(15.5);
+    // With the floor at 10 the widest shelf is (21 - 0.85 - 1.2 - 10 - 0.5) / tan 36 = 11.70 mm, under the 14 mm it has by default.
+    const [shelf] = gridfinityLabelPieces(bin({ gridfinityLabelBack: true, gridfinityFloorHeight: 10 }))!.shelves;
+    expect(shelf.profile.width).toBeCloseTo((21 - 0.85 - 1.2 - 10 - 0.5) / Math.tan((36 * Math.PI) / 180), 9);
+    expect(gridfinityLabelFits(bin({ gridfinityFloorHeight: 15.5 }))).toBe(true);
+    expect(gridfinityLabelFits(bin({ gridfinityFloorHeight: 15.6 }))).toBe(false);
+    expect(gridfinityLabelPieces(bin({ gridfinityLabelBack: true, gridfinityFloorHeight: 15.6 }))).toBeNull();
+    expect(gridfinityLabelledTriangles(runtime, bin({ gridfinityLabelBack: true, gridfinityScoopFront: true, gridfinityFloorHeight: 16 }))).toEqual(gridfinityTriangles(bin({ gridfinityFloorHeight: 16 })));
+  });
+
+  it("keeps the floor height through a saved project, the settings and the exact body", async () => {
+    const settings = { gridfinityFloorHeight: 12.5 };
+    const shape = canonicalizeShape(binShape(settings));
+    expect(workplaneShapesEqual(shape, { ...shape, gridfinityFloorHeight: 13 })).toBe(false);
+    const exported = await exportLylProject({
+      projectId: "floor",
+      projectName: "Floor",
+      createdAt: 1_700_000_000_000,
+      modifiedAt: 1_700_000_100_000,
+      shapes: [shape],
+      history: [editorHistoryEntry([shape], [])],
+      historyIndex: 0,
+      assets: [],
+      workspace: DEFAULT_WORKPLANE_WORKSPACE,
+      snapGrid: DEFAULT_SNAP_GRID,
+      placementElevation: 0,
+    });
+    const [loaded] = (await importLylProject(exported)).shapes;
+    expect(workplaneShapesEqual(loaded, shape)).toBe(true);
+    expect(loaded).toMatchObject(settings);
+    expect(sceneShape(shape)).toMatchObject(settings);
+    expect(cadModifierGridfinityForShape(shape)).toMatchObject(settings);
+    expect(normalizeShapeCustomizations({ gridfinity: settings }, {})).toMatchObject({ gridfinity: settings });
+    expect(shapeDefaultsFromShape(shape)).toMatchObject(settings);
+    const asset = toolbarShapeAssets.find((entry) => entry.kind === "gridfinity")!;
+    expect(makeShapeFromAsset(asset, { x: 0, z: 0 }, settings)).toMatchObject(settings);
+    // The mesh that booleans and the exact body's check use has the raised floor.
+    const meshVolume = (s: WorkplaneShape) => { const { vertices, faces } = meshForShape(s); return signedVolume(faces.map((face) => face.map((i) => vertices[i]) as V[])); };
+    expect((meshVolume(shape) - meshVolume(canonicalizeShape(binShape({})))) / (insideArea * (12.5 - 5.95))).toBeCloseTo(1, 3);
   });
 });

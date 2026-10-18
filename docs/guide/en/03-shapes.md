@@ -115,13 +115,19 @@ A holder, a grip or a base plate you need again and again goes into the {{ui:myS
 2. Open the shape library and click {{ui:myShapes.saveSelection}}. Enter a name and confirm with {{ui:common.save}}.
 3. In any design, a click on the tile inserts the shape, like any other shape. You can also drag the tile onto the workplane; it then lands where you let go. The shape then hangs on the pointer, like any other: it follows it, also over the faces of other bodies, and a click sets it down; [[Esc]] puts it away.
 
-Several bodies come back together, placed as they stood to each other, and stay selectable one by one. The pencil on a tile renames it, the bin removes it after asking. Shapes already inserted into designs stay as they are.
+Several bodies come back together, placed as they stood to each other, and stay selectable one by one. [Notes](chapter:measuring-and-notes) pinned to the saved bodies go along and come back closed, pinned to the inserted ones; free notes and reference points stay in the design. The pencil on a tile renames it, the bin removes it after asking. Shapes already inserted into designs stay as they are.
 
 The {{ui:myShapes.title}} live in this browser, apart from the designs, and are there again the next time you start. {{ui:dashboard.backupAll}} on the start page backs them up with the designs, and opening the backup brings both back. To take only the shapes to another browser, {{ui:myShapes.backup}} (the arrow pointing down) saves them as a ZIP file and {{ui:myShapes.load}} (the arrow pointing up) brings them back there. {{ui:myShapes.load}} also takes single `.lyl` designs; each one becomes a shape. Shapes already there are not added twice.
 
+### Folders
+
+Many custom shapes sort better into folders. {{ui:myShapes.newFolder}} (the folder with the plus, next to {{ui:myShapes.saveSelection}}) asks for a name and makes a folder at the top; the folder with the plus on a folder, {{ui:myShapes.newSubfolder}}, makes one inside it. Folders go three levels deep: a folder on the third level holds shapes but no further folders. Folders sit above the shapes that are in none, in the order of their names, and open and close with their arrow; the number on a folder counts the shapes in it and in the folders inside it. When saving, choose the folder in the list next to the name; {{ui:myShapes.noFolder}} keeps the shape at the top.
+
+The folder with the arrow on a tile moves that shape into another folder, or back out with {{ui:myShapes.noFolder}}. The pencil on a folder renames it, the bin deletes it after asking, together with the folders and shapes in it. A folder itself cannot be moved: make the new one where it belongs and move the shapes over. A backup keeps the folders, and loading it puts the shapes back in the same place.
+
 ### Custom shapes on the server
 
-With the [shared server store](chapter:files-and-saving) switched on, the section shows two groups: {{ui:myShapes.onServer}} and {{ui:myShapes.inBrowser}}. When saving you choose where the shape goes; the server is chosen to start with. There it lives in the folder `Custom shapes`, as a `.lyl` file of its own with a picture, ready on every device that reaches the server. The cloud on a browser tile puts that shape on the server; it is then no longer kept twice.
+With the [shared server store](chapter:files-and-saving) switched on, the section shows two groups: {{ui:myShapes.onServer}} and {{ui:myShapes.inBrowser}}. When saving you choose where the shape goes; the server is chosen to start with. There it lives in the folder `Custom shapes`, as a `.lyl` file of its own with a picture, ready on every device that reaches the server; its folders are folders inside `Custom shapes`. Each side has folders of its own, and a shape moves between the folders of its side. The cloud on a browser tile puts that shape on the server; it is then no longer kept twice.
 
 The `Custom shapes` folder shows on the start page as well. Open a shape there like a design, change it, and it is saved automatically like any design on the server; the next insert takes the new version. As the server store has no login, everyone who reaches the server sees the same shapes.
 

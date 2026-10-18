@@ -11,8 +11,8 @@ The tape measure sits at the lower end of the camera bar on the left edge ({{ui:
 
 ![The tape measure with its buttons: add measurement, move measuring points, remove measurement, whole edges, delete all measurements.](shot:tape-menu)
 
-1. **{{ui:camera.addMeasurement}}:** Click one point, drag to the next and click it. The distance is labelled.
-2. **{{ui:camera.moveMeasurement}}:** Grab the points and move them, the number follows.
+1. **{{ui:camera.addMeasurement}}:** Click one point, drag to the next and click it. The distance is labelled. After the first click, a tap on [[X]], [[Y]] or [[Z]] holds the second point to that axis through the first, as in Blender; a coloured line and a note at the top show it, and the same key again lets go. Faces no longer catch the pointer then. A corner or an edge under the pointer still gives its position along the axis, and elsewhere the point follows the pointer along the line on the grid. To measure how tall a part is, click its top corner, tap [[Z]] and click the plate.
+2. **{{ui:camera.moveMeasurement}}:** Grab the points and move them, the number follows. [[X]], [[Y]] or [[Z]] tapped while you drag holds the point to that axis through where it started.
 3. **{{ui:camera.deleteMeasurement}}:** Afterwards click a measurement to remove it.
 4. **{{ui:camera.tapeWholeEdges}}:** A click on an edge measures all of it, the length of a circle for example. With this switched off, a click puts a point on the edge instead, and the second point goes anywhere, so you can measure the diameter or any other distance. [[Alt]] turns the switch round for one click. On a circle, the point across from the first one snaps in when the pointer comes near, and the points sit on the true circle, so the diameter comes out exact.
 5. **{{ui:camera.deleteAllMeasurements}}:** Removes every measurement at once. Because this cannot be undone, layerling asks first; with no measurements there is nothing to do.
@@ -61,6 +61,8 @@ A note records what the geometry does not say: "This screw is 0.3 mm too tight",
 - If you place the note **on a body**, it travels with it.
 - If you place it **beside**, it stays on the workplane ({{ui:note.free}}).
 - {{ui:note.detach}} releases an attached note from the body.
+- {{ui:editor.tool.group}} takes an attached note into the group; {{ui:editor.tool.ungroup}} hands it to the visible part under it, a group inside included. While a group is open with {{ui:group.edit}}, its notes move with the part under them and go back to the group with {{ui:group.done}}; cancelling puts them back as they were.
+- If its body is deleted, or no visible body is under it any more, the note stays where it stood, on the workplane.
 - Dragging moves the note, a click opens it for editing.
 - While you write, [[Enter]] keeps the text and [[Esc]] puts it back to how it was before you started; [[Shift]]+[[Enter]] starts a new line.
 

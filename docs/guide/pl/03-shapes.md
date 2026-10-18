@@ -119,6 +119,12 @@ Kilka brył wraca razem, ustawionych względem siebie tak jak wcześniej, i każ
 
 {{ui:myShapes.title}} mieszkają w tej przeglądarce, osobno od projektów, i są dostępne przy następnym uruchomieniu. {{ui:dashboard.backupAll}} na stronie startowej zapisuje je w kopii zapasowej razem z projektami, a otwarcie kopii przywraca jedno i drugie. Aby przenieść do innej przeglądarki tylko kształty, {{ui:myShapes.backup}} (strzałka w dół) zapisuje je jako plik ZIP, a {{ui:myShapes.load}} (strzałka w górę) przywraca je tam. {{ui:myShapes.load}} przyjmuje też pojedyncze projekty `.lyl`, z których każdy staje się kształtem. Kształty, które już są, nie są dodawane drugi raz.
 
+### Foldery
+
+Wiele własnych kształtów łatwiej uporządkować w folderach. {{ui:myShapes.newFolder}} (folder z plusem obok {{ui:myShapes.saveSelection}}) pyta o nazwę i tworzy folder na górze; folder z plusem przy folderze, {{ui:myShapes.newSubfolder}}, tworzy folder w jego wnętrzu. Foldery sięgają trzech poziomów: folder na trzecim poziomie mieści kształty, ale już nie kolejne foldery. Foldery stoją nad kształtami, które nie leżą w żadnym folderze, w kolejności nazw, i rozwijają się i zwijają strzałką; liczba przy folderze liczy kształty w nim i w folderach poniżej. Przy zapisie wybierz folder z listy obok nazwy; z {{ui:myShapes.noFolder}} kształt zostaje na górze.
+
+Folder ze strzałką na kafelku przenosi kształt do innego folderu albo z {{ui:myShapes.noFolder}} z powrotem na zewnątrz. Ołówek przy folderze zmienia jego nazwę, kosz usuwa go po pytaniu razem z folderami i kształtami w środku. Samego folderu nie da się przenieść: utwórz nowy tam, gdzie powinien być, i przenieś do niego kształty. Kopia zapasowa zachowuje foldery, a po jej wczytaniu kształty wracają na to samo miejsce. Na serwerze foldery są folderami wewnątrz `Custom shapes`.
+
 ### Własne kształty na serwerze
 
 Gdy jest włączony [wspólny magazyn na serwerze](chapter:files-and-saving), sekcja pokazuje dwie grupy: {{ui:myShapes.onServer}} i {{ui:myShapes.inBrowser}}. Przy zapisie wybierasz, gdzie trafi kształt, domyślnie na serwer. Mieszka tam w folderze `Custom shapes` jako osobny plik `.lyl` z obrazkiem, gotowy na każdym urządzeniu, które ma dostęp do serwera. Chmurka na kafelku w przeglądarce przenosi ten kształt na serwer, a wtedy nie jest on już trzymany podwójnie.

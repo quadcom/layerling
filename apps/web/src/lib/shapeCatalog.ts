@@ -209,6 +209,7 @@ const SHAPE_LABEL_KEYS: Record<string, MessageKey> = {
   text: "shape.text",
   nameTag: "shape.nameTag",
   iconTag: "shape.iconTag",
+  qrCode: "shape.qrCode",
   "round-roof": "shape.roundRoof",
   "half-sphere": "shape.halfSphere",
   torus: "shape.torus",
@@ -297,8 +298,21 @@ export const iconTagAsset: ToolbarShapeAsset = {
   color: "#ffffff",
 };
 
-/** What the shape library lists: the catalogue, with the name tag and the icon tag after the text. */
-export const libraryShapeAssets: ToolbarShapeAsset[] = toolbarShapeAssets.flatMap((asset) => (asset.id === "text" ? [asset, nameTagAsset, iconTagAsset] : [asset]));
+/**
+ * The QR code (#553): a text or an address as a code to print. Like the icon tag, the library
+ * entry opens a window for the text and the choices; the kind only names its picture.
+ */
+export const qrCodeAsset: ToolbarShapeAsset = {
+  id: "qrCode",
+  name: "QR code",
+  src: "assets/editor/shape-icons-gray/qrCode.png",
+  menuIcon: "assets/editor/shape-icons-gray/qrCode.png",
+  kind: "text",
+  color: "#1f1f1f",
+};
+
+/** What the shape library lists: the catalogue, with the name tag, the icon tag and the QR code after the text. */
+export const libraryShapeAssets: ToolbarShapeAsset[] = toolbarShapeAssets.flatMap((asset) => (asset.id === "text" ? [asset, nameTagAsset, iconTagAsset, qrCodeAsset] : [asset]));
 
 /**
  * Kinds a shape dragged from the library may have. Taken from the library
@@ -638,6 +652,7 @@ export function sceneShape(shape: Partial<WorkplaneShape> & Pick<WorkplaneShape,
     gridfinityType: shape.gridfinityType,
     gridfinityLip: shape.gridfinityLip,
     gridfinityMagnets: shape.gridfinityMagnets,
+    gridfinityHalfGrid: shape.gridfinityHalfGrid,
     gridfinityLabelBack: shape.gridfinityLabelBack,
     gridfinityLabelFront: shape.gridfinityLabelFront,
     gridfinityLabelLeft: shape.gridfinityLabelLeft,
@@ -656,6 +671,12 @@ export function sceneShape(shape: Partial<WorkplaneShape> & Pick<WorkplaneShape,
     gridfinityLabelRightOffset: shape.gridfinityLabelRightOffset,
     gridfinityLabelCorner: shape.gridfinityLabelCorner,
     gridfinityLabelCornerSize: shape.gridfinityLabelCornerSize,
+    gridfinityScoopBack: shape.gridfinityScoopBack,
+    gridfinityScoopFront: shape.gridfinityScoopFront,
+    gridfinityScoopLeft: shape.gridfinityScoopLeft,
+    gridfinityScoopRight: shape.gridfinityScoopRight,
+    gridfinityScoopRadius: shape.gridfinityScoopRadius,
+    gridfinityFloorHeight: shape.gridfinityFloorHeight,
     knurlPattern: shape.knurlPattern,
     knurlCount: shape.knurlCount,
     knurlDepth: shape.knurlDepth,
@@ -786,6 +807,7 @@ export function makeShapeFromAsset(
     height: customization.height ?? defaults.height,
     gridfinityType: customization.gridfinityType,
     gridfinityLip: customization.gridfinityLip,
+    gridfinityHalfGrid: customization.gridfinityHalfGrid,
   }) : null;
   // New gears get involute teeth (#201); their size follows the module, so other teeth keep module 2.
   const gearType = asset.kind === "gear" ? normalizeGearType(customization.gearType ?? DEFAULT_GEAR_TYPE) : undefined;
@@ -897,6 +919,7 @@ export function makeShapeFromAsset(
     gridfinityType: asset.kind === "gridfinity" ? normalizeGridfinityType(customization.gridfinityType) : undefined,
     gridfinityLip: asset.kind === "gridfinity" ? customization.gridfinityLip ?? DEFAULT_GRIDFINITY_LIP : undefined,
     gridfinityMagnets: asset.kind === "gridfinity" ? customization.gridfinityMagnets ?? DEFAULT_GRIDFINITY_MAGNETS : undefined,
+    gridfinityHalfGrid: asset.kind === "gridfinity" ? customization.gridfinityHalfGrid : undefined,
     gridfinityLabelBack: asset.kind === "gridfinity" ? customization.gridfinityLabelBack : undefined,
     gridfinityLabelFront: asset.kind === "gridfinity" ? customization.gridfinityLabelFront : undefined,
     gridfinityLabelLeft: asset.kind === "gridfinity" ? customization.gridfinityLabelLeft : undefined,
@@ -915,6 +938,12 @@ export function makeShapeFromAsset(
     gridfinityLabelRightOffset: asset.kind === "gridfinity" ? customization.gridfinityLabelRightOffset : undefined,
     gridfinityLabelCorner: asset.kind === "gridfinity" ? customization.gridfinityLabelCorner : undefined,
     gridfinityLabelCornerSize: asset.kind === "gridfinity" ? customization.gridfinityLabelCornerSize : undefined,
+    gridfinityScoopBack: asset.kind === "gridfinity" ? customization.gridfinityScoopBack : undefined,
+    gridfinityScoopFront: asset.kind === "gridfinity" ? customization.gridfinityScoopFront : undefined,
+    gridfinityScoopLeft: asset.kind === "gridfinity" ? customization.gridfinityScoopLeft : undefined,
+    gridfinityScoopRight: asset.kind === "gridfinity" ? customization.gridfinityScoopRight : undefined,
+    gridfinityScoopRadius: asset.kind === "gridfinity" ? customization.gridfinityScoopRadius : undefined,
+    gridfinityFloorHeight: asset.kind === "gridfinity" ? customization.gridfinityFloorHeight : undefined,
     hingeClearance: asset.kind === "hinge" ? normalizeHingeClearance(customization.hingeClearance ?? DEFAULT_HINGE_CLEARANCE) : undefined,
     hingePinless: asset.kind === "hinge" ? customization.hingePinless === true : undefined,
     hingeKnuckles: asset.kind === "hinge" ? normalizeHingeKnuckles(customization.hingeKnuckles ?? DEFAULT_HINGE_KNUCKLES, width, normalizeHingeClearance(customization.hingeClearance)) : undefined,
@@ -966,6 +995,8 @@ const GENERATED_NAME_KEYS: Record<string, MessageKey> = {
   "Sketch revolve": "shape.sketchRevolve",
   Cube: "shape.box",
   "Icon tag": "shape.iconTag",
+  "QR code": "shape.qrCode",
+  "QR plate": "shape.qrPlate",
 };
 
 /**

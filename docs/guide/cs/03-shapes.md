@@ -119,6 +119,12 @@ Více těles zachová vzájemné rozmístění a každé lze vybírat samostatn�
 
 Vlastní tvary jsou v tomto prohlížeči odděleně od projektů a zůstanou i po dalším spuštění. {{ui:dashboard.backupAll}} zálohuje obojí a otevření zálohy obnoví obojí. Pro přenos samotných tvarů použijte {{ui:myShapes.backup}}, šipku dolů, která vytvoří ZIP, a {{ui:myShapes.load}}, šipku nahoru. Načíst lze i jednotlivé `.lyl`; každý se stane vlastním tvarem. Shodné existující tvary se nepřidávají znovu.
 
+### Složky
+
+Mnoho vlastních tvarů se lépe třídí do složek. {{ui:myShapes.newFolder}} (složka s plusem vedle {{ui:myShapes.saveSelection}}) se zeptá na název a vytvoří složku nahoře; složka s plusem u složky, {{ui:myShapes.newSubfolder}}, vytvoří složku uvnitř ní. Složky mají nejvýše tři úrovně: složka na třetí úrovni pojme tvary, ale už žádné další složky. Složky stojí nad tvary, které nejsou v žádné, seřazené podle názvu, a otevírají a zavírají se šipkou; číslo u složky počítá tvary v ní i ve složkách pod ní. Při ukládání zvolte složku v seznamu vedle názvu; s {{ui:myShapes.noFolder}} zůstane tvar nahoře.
+
+Složka se šipkou na dlaždici přesune tvar do jiné složky, nebo s {{ui:myShapes.noFolder}} zase ven. Tužka u složky ji přejmenuje, koš ji po dotazu smaže i se složkami a tvary v ní. Samotnou složku přesunout nelze: vytvořte novou tam, kam patří, a tvary do ní přesuňte. Záloha složky zachová a při načtení se tvary vrátí na stejné místo. Na serveru jsou složky složkami uvnitř `Custom shapes`.
+
 ### Vlastní tvary na serveru
 
 Při zapnutém [sdíleném serverovém úložišti](chapter:files-and-saving) se zobrazí {{ui:myShapes.onServer}} a {{ui:myShapes.inBrowser}}. Při ukládání zvolíte umístění, výchozí je server. Tvar je tam ve složce `Custom shapes` jako samostatný `.lyl` s náhledem a je dostupný všem zařízením s přístupem. Obláček na místní dlaždici jej přesune na server, bez ponechání druhé kopie.

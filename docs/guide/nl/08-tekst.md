@@ -124,6 +124,27 @@ De SVG heeft gesloten contouren nodig; een tekening van alleen open lijnen kan g
 
 **Een afbeelding (PNG of JPG)** wordt overgetrokken tot een omtrek, en het voorbeeld toont die omtrek. Onder {{ui:iconTag.part}} kies je of het {{ui:iconTag.part.dark}} of het {{ui:iconTag.part.light}} het icoon wordt; eerst is dat het deel dat niet de achtergrond is. Doorzichtige pixels horen nooit bij het icoon. Een SVG die alleen één afbeelding bevat, zoals Inkscape een geïmporteerde bitmap opslaat, wordt net zo overgetrokken. De omtrek volgt de pixels, dus een kleine afbeelding geeft een ruwe rand: afbeeldingen van een paar honderd pixels of meer werken het best. {{ui:iconTag.replace}} neemt van een afbeelding het deel dat niet haar achtergrond is.
 
+## QR-codes
+
+Een QR-code maakt van een tekst of een webadres een patroon dat een telefooncamera leest: een link naar je winkel op een bordje, de wifinaam op een onderzetter, een telefoonnummer aan een sleutelhanger.
+
+Kies {{ui:shape.qrCode}} in de vormenbibliotheek. Er opent een venster; de cursor staat al in het tekstveld:
+
+- **{{ui:qrCode.text}}:** wat de code zegt. Enter maakt de code, Shift+Enter begint een nieuwe regel. Onder het veld zie je hoeveel van de ruimte gebruikt is; letters met accenten en andere speciale tekens nemen twee bytes. Is de tekst te lang, dan zegt het veld dat.
+- **{{ui:qrCode.errorCorrection}}:** L, M, Q of H. Een hoger niveau wordt nog gelezen als een deel van de code vuil of bekrast is (L ongeveer 7 %, M 15 %, Q 25 %, H 30 %), maar heeft voor dezelfde tekst meer modules nodig, dus elke module wordt kleiner. Eerst is M gekozen.
+- **{{ui:qrCode.style}}:** {{ui:qrCode.style.code}} maakt alleen de code, 4 mm hoog. {{ui:qrCode.style.raised}} zet hem 1 mm hoog op een witte plaat van 3 mm, als bundel van twee kleuren, zodat een meerkleurenprint de code donker en de plaat licht print. {{ui:qrCode.style.engraved}} snijdt de code 1 mm diep in de plaat.
+- **{{ui:qrCode.sizeBy}}:** typ de {{ui:qrCode.sizeBy.width}} van de hele code (eerst 40 mm) of de grootte van één module; het andere getal staat eronder. Modules kleiner dan 0,8 mm krijgen een waarschuwing. Dat is een vuistregel voor een spuitmond van 0,4 mm, geen garantie: printer, materiaal, kleuren en de telefoon spelen allemaal mee.
+- **{{ui:qrCode.quietZone}}:** scanners hebben rond de code een lege rand van vier modules nodig. Op een plaat hoort de rand bij de plaat; zet hem alleen uit als de plaat op een groter licht vlak zit. De code alleen heeft geen eigen rand: laat de ruimte eromheen vrij.
+- **Hoogtes:** de hoogte van de code, op een plaat de codehoogte of graveerdiepte, en de plaatdikte.
+
+Het voorbeeld toont de code zoals hij gebouwd wordt. {{ui:qrCode.ok}} zet hem in het midden van de plaat.
+
+De code is een lichaam als elk ander: verschuif hem, draai hem, schaal hem (houd breedte en diepte gelijk, anders wordt de code vervormd), groepeer hem, of maak er een gat van en groepeer hem in een eigen onderdeel om hem daar te graveren. Schalen schaalt de hele code; elke module blijft vierkant.
+
+De kaart {{ui:qrCode.title}} bovenaan zijn instellingen bevat de tekst. Verander hem en klik op {{ui:qrCode.regenerate}}: de code wordt opnieuw gebouwd waar hij staat en zo breed als hij nu is. Foutcorrectie, stille zone en bouwwijze blijven zoals ze gekozen zijn; voor andere keuzes maak je een nieuwe code uit de bibliotheek.
+
+Scan de code met je telefoon voordat je hem print, en na het printen nog eens. Donker op licht leest het best; een lichte code op een donkere plaat leest niet elke telefoon.
+
 ## Tekst op een cirkelboog
 
 Moet de belettering niet recht lopen, maar de rand van een munt, een deksel of een ring volgen? Daarvoor is er de instelling {{ui:prop.textCurved}}.

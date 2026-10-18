@@ -5179,291 +5179,6 @@ html[data-toolbar-size="large"] .shape-menu-dropdown:not(.sketch-shape-menu-drop
   text-transform: uppercase;
 }
 
-.my-shapes-section {
-  border-bottom: 1px solid #efe7d9;
-  background: #fffdf9;
-}
-
-.my-shapes-header {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: center;
-  justify-content: space-between;
-  gap: 8px;
-  padding: 8px 10px 8px 8px;
-}
-
-.my-shapes-toggle {
-  display: inline-flex;
-  align-items: center;
-  gap: 6px;
-  padding: 4px 6px;
-  color: #604529;
-  background: transparent;
-  border: 0;
-  border-radius: 4px;
-  cursor: pointer;
-  font-size: 14px;
-  font-weight: 800;
-}
-
-.my-shapes-toggle:hover {
-  background: #f6efe4;
-}
-
-.my-shapes-toggle svg {
-  width: 16px;
-  height: 16px;
-}
-
-.my-shapes-count {
-  min-width: 20px;
-  padding: 1px 6px;
-  color: #6b4f30;
-  background: #efe4d3;
-  border-radius: 999px;
-  font-size: 12px;
-  text-align: center;
-}
-
-.my-shapes-actions {
-  display: flex;
-  align-items: center;
-  gap: 4px;
-}
-
-.my-shapes-save-button,
-.my-shapes-icon-button,
-.my-shapes-name-form button {
-  display: inline-flex;
-  height: 30px;
-  align-items: center;
-  justify-content: center;
-  gap: 5px;
-  padding: 0 10px;
-  color: #5c442c;
-  background: #fbfaf8;
-  border: 1px solid #dccdbe;
-  border-radius: 4px;
-  cursor: pointer;
-  font-size: 13px;
-  font-weight: 700;
-}
-
-.my-shapes-icon-button {
-  width: 30px;
-  padding: 0;
-}
-
-.my-shapes-save-button svg,
-.my-shapes-icon-button svg {
-  width: 16px;
-  height: 16px;
-}
-
-.my-shapes-save-button:hover:not(:disabled),
-.my-shapes-icon-button:hover:not(:disabled),
-.my-shapes-name-form button:hover:not(:disabled) {
-  background: #fff;
-  border-color: #c9b49c;
-}
-
-.my-shapes-save-button:disabled,
-.my-shapes-icon-button:disabled {
-  cursor: default;
-  opacity: 0.45;
-}
-
-.my-shapes-body {
-  padding: 0 8px 8px;
-}
-
-.my-shapes-body .my-shapes-list {
-  padding: 0;
-}
-
-.my-shapes-empty {
-  margin: 0;
-  padding: 2px 8px 6px;
-  color: #7b6249;
-  font-size: 13px;
-  line-height: 1.4;
-}
-
-.my-shapes-name-form {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: center;
-  gap: 6px;
-  padding: 0 0 8px;
-}
-
-.my-shapes-name-form label {
-  color: #6b4f30;
-  font-size: 13px;
-  font-weight: 700;
-}
-
-.my-shapes-name-form input,
-.my-shape-rename input {
-  flex: 1 1 100px;
-  min-width: 0;
-  height: 30px;
-  padding: 0 8px;
-  color: #3f2e1c;
-  background: #fff;
-  border: 1px solid #cdb9a2;
-  border-radius: 4px;
-  font-size: 14px;
-}
-
-.my-shapes-name-form button[type="submit"] {
-  color: #fff;
-  background: #a8662a;
-  border-color: #a8662a;
-}
-
-.my-shapes-name-form button[type="submit"]:hover:not(:disabled) {
-  background: #94571f;
-  border-color: #94571f;
-}
-
-.my-shape-tile {
-  position: relative;
-  min-width: 0;
-}
-
-.my-shape-tile .shape-menu-item {
-  width: 100%;
-}
-
-.my-shape-tile .shape-menu-item img,
-.my-shape-no-preview,
-.my-shape-rename img {
-  width: 48px;
-  height: 48px;
-  object-fit: contain;
-}
-
-.my-shape-no-preview {
-  flex: 0 0 auto;
-  display: block;
-  background: #f1eadf;
-  border-radius: 6px;
-}
-
-.my-shape-tile-actions {
-  position: absolute;
-  top: 50%;
-  right: 6px;
-  display: flex;
-  gap: 2px;
-  padding: 3px;
-  background: rgba(255, 255, 255, 0.94);
-  border-radius: 6px;
-  transform: translateY(-50%);
-  opacity: 0;
-  transition: opacity 120ms ease;
-}
-
-.my-shape-tile:hover .my-shape-tile-actions,
-.my-shape-tile:focus-within .my-shape-tile-actions,
-.my-shape-tile-actions:has(.danger) {
-  opacity: 1;
-}
-
-/* Without a mouse the buttons are always there, so the name makes room. */
-@media (hover: none) {
-  .my-shape-tile-actions {
-    opacity: 1;
-  }
-
-  .my-shape-tile .shape-menu-item {
-    padding-right: 62px;
-  }
-
-  .my-shape-tile .shape-menu-item:has(+ .my-shape-tile-actions.three) {
-    padding-right: 90px;
-  }
-}
-
-.my-shape-tile-action {
-  display: inline-flex;
-  min-width: 26px;
-  height: 26px;
-  align-items: center;
-  justify-content: center;
-  padding: 0 5px;
-  color: #6b4f30;
-  background: #fff;
-  border: 1px solid #e3d6c6;
-  border-radius: 4px;
-  cursor: pointer;
-  font-size: 12px;
-  font-weight: 800;
-}
-
-.my-shape-tile-action svg {
-  width: 14px;
-  height: 14px;
-}
-
-.my-shape-tile-action:hover {
-  border-color: #c9b49c;
-}
-
-.my-shape-tile-action.danger {
-  color: #fff;
-  background: #b42318;
-  border-color: #b42318;
-}
-
-.my-shapes-location {
-  display: inline-flex;
-  overflow: hidden;
-  border: 1px solid #dccdbe;
-  border-radius: 4px;
-}
-
-.my-shapes-name-form .my-shapes-location button {
-  height: 28px;
-  border: 0;
-  border-radius: 0;
-  font-weight: 700;
-}
-
-.my-shapes-name-form .my-shapes-location button + button {
-  border-left: 1px solid #dccdbe;
-}
-
-.my-shapes-name-form .my-shapes-location button.active {
-  color: #fff;
-  background: #7d6245;
-}
-
-.my-shapes-group + .my-shapes-group {
-  margin-top: 8px;
-}
-
-.my-shapes-group-title {
-  padding: 0 4px 4px;
-  color: #8a6d4c;
-  font-size: 12px;
-  font-weight: 800;
-}
-
-
-.my-shape-rename {
-  display: flex;
-  min-height: 58px;
-  align-items: center;
-  gap: 8px;
-  padding: 5px 6px 5px 7px;
-  background: #fff;
-  border: 1px solid #dccdbe;
-  border-radius: 4px;
-}
-
 .action-buttons button {
   box-sizing: border-box;
   display: inline-flex;
@@ -5629,6 +5344,8 @@ html[data-toolbar-size="large"] .shape-menu-dropdown:not(.sketch-shape-menu-drop
 
 .export-dialog-body {
   display: grid;
+  /* One column that never grows past the window: a long file name in the footer made it as wide as the name (#563). */
+  grid-template-columns: minmax(0, 1fr);
   max-height: calc(100vh - var(--editor-toolbar-height) - var(--editor-footer-height) - 96px);
   overflow-y: auto;
   background: #fcfaf6;
@@ -6051,6 +5768,7 @@ html[data-toolbar-size="large"] .shape-menu-dropdown:not(.sketch-shape-menu-drop
 
 .export-dialog-footer {
   display: flex;
+  flex-wrap: wrap;
   align-items: center;
   justify-content: flex-end;
   gap: 10px;
@@ -6060,14 +5778,13 @@ html[data-toolbar-size="large"] .shape-menu-dropdown:not(.sketch-shape-menu-drop
 }
 
 .export-dialog-footer .export-linked-file {
+  /* The file name has the row to itself, however long, and the buttons stand under it (#563). */
+  flex: 1 1 100%;
   min-width: 0;
-  margin-right: auto;
-  overflow: hidden;
   color: #897662;
   font-size: 11px;
   font-weight: 700;
-  text-overflow: ellipsis;
-  white-space: nowrap;
+  overflow-wrap: anywhere;
 }
 
 .export-dialog-footer > div {
@@ -6537,6 +6254,45 @@ html[data-theme="dark"] .visibility-hidden-badge {
   font-weight: 900;
   transform: translateX(-50%);
   pointer-events: none;
+}
+
+/* X, Y or Z tapped while drawing or dragging: the move is held to that axis until the point is placed. */
+.axis-lock-badge {
+  position: absolute;
+  top: 36px;
+  left: 50%;
+  z-index: 9;
+  padding: 4px 10px;
+  color: #3c2f22;
+  background: rgba(255, 255, 255, 0.96);
+  border: 1px solid var(--axis-lock-color);
+  border-left-width: 5px;
+  border-radius: 12px;
+  box-shadow: 0 1px 3px rgba(84, 59, 32, 0.18);
+  font-size: 11px;
+  font-weight: 800;
+  transform: translateX(-50%);
+  pointer-events: none;
+  white-space: nowrap;
+}
+
+.axis-lock-badge.axis-x,
+.sketch-axis-lock-line.axis-x { --axis-lock-color: #e5484d; }
+.axis-lock-badge.axis-y,
+.sketch-axis-lock-line.axis-y { --axis-lock-color: #3fae5a; }
+.axis-lock-badge.axis-z { --axis-lock-color: #3b82f6; }
+
+html[data-theme="dark"] .axis-lock-badge {
+  color: #f2e8dc;
+  background: rgba(40, 30, 20, 0.96);
+}
+
+.sketch-axis-lock-line {
+  stroke: var(--axis-lock-color);
+  stroke-width: 1.5;
+  stroke-dasharray: 10 6;
+  opacity: 0.85;
+  vector-effect: non-scaling-stroke;
 }
 
 .sketch-revolve-preview {
@@ -16058,87 +15814,8 @@ html[data-theme="dark"] .inspector-help-link {
   color: #e8322a;
 }
 
-html[data-theme="dark"] .my-shapes-section {
-  background: rgba(52, 40, 28, 0.6);
-  border-color: #594a3a;
-}
-
-html[data-theme="dark"] .my-shapes-toggle,
-html[data-theme="dark"] .my-shapes-name-form label {
-  color: #f0e7d9;
-}
-
-html[data-theme="dark"] .my-shapes-toggle:hover {
-  background: #463625;
-}
-
-html[data-theme="dark"] .my-shapes-count {
-  color: #f0e7d9;
-  background: #5b4733;
-}
-
-html[data-theme="dark"] .shape-menu-subtitle,
-html[data-theme="dark"] .my-shapes-empty {
+html[data-theme="dark"] .shape-menu-subtitle {
   color: #cdbca6;
-}
-
-html[data-theme="dark"] .my-shapes-save-button,
-html[data-theme="dark"] .my-shapes-icon-button,
-html[data-theme="dark"] .my-shapes-name-form button,
-html[data-theme="dark"] .my-shape-tile-action,
-html[data-theme="dark"] .my-shape-rename {
-  color: #ede4d4;
-  background: #3a2c1f;
-  border-color: #5b4b3a;
-}
-
-html[data-theme="dark"] .my-shapes-save-button:hover:not(:disabled),
-html[data-theme="dark"] .my-shapes-icon-button:hover:not(:disabled),
-html[data-theme="dark"] .my-shapes-name-form button:hover:not(:disabled),
-html[data-theme="dark"] .my-shape-tile-action:hover {
-  background: #463625;
-  border-color: #7a644c;
-}
-
-html[data-theme="dark"] .my-shapes-name-form button[type="submit"] {
-  color: #fff;
-  background: #a8662a;
-  border-color: #a8662a;
-}
-
-html[data-theme="dark"] .my-shapes-name-form input,
-html[data-theme="dark"] .my-shape-rename input {
-  color: #f0e7d9;
-  background: #2c2117;
-  border-color: #6b5741;
-}
-
-html[data-theme="dark"] .my-shape-no-preview {
-  background: #463625;
-}
-
-html[data-theme="dark"] .my-shape-tile-action.danger {
-  color: #fff;
-  background: #b42318;
-  border-color: #b42318;
-}
-
-html[data-theme="dark"] .my-shapes-location,
-html[data-theme="dark"] .my-shapes-name-form .my-shapes-location button + button {
-  border-color: #5b4b3a;
-}
-
-html[data-theme="dark"] .my-shapes-name-form .my-shapes-location button.active {
-  color: #fff;
-  background: #8a6a46;
-}
-
-html[data-theme="dark"] .my-shapes-group-title {
-  color: #cdbca6;
-}
-
-html[data-theme="dark"] .my-shape-tile-actions {
-  background: rgba(58, 44, 31, 0.94);
 }
 
 /* Bild der Ansicht im Export-Fenster: zwei Schalter. */
@@ -16699,6 +16376,78 @@ html[data-theme="dark"] .top-action-body .icon-tag-ok {
   font-size: 26px;
   font-weight: 900;
   letter-spacing: 0.08em;
+}
+
+/* The QR code window and card (#553): the text, the notes under it, the quiet zone switch. The
+   preview stays black on white in every theme - it shows the code as a scanner sees it. */
+.qr-code-text {
+  display: grid;
+  gap: 4px;
+  color: var(--foreground);
+  font-size: 13px;
+  font-weight: 800;
+}
+
+.qr-code-text textarea {
+  min-height: 64px;
+  padding: 6px 10px;
+  color: var(--foreground);
+  font: inherit;
+  font-weight: 600;
+  resize: vertical;
+  background: var(--tile-hover);
+  border: 1px solid var(--border);
+  border-radius: 6px;
+}
+
+.qr-code-text textarea[aria-invalid="true"] {
+  border-color: #c4361d;
+}
+
+.qr-code-text small,
+.qr-code-note {
+  color: var(--muted-strong);
+  font-size: 11px;
+  font-weight: 700;
+}
+
+.qr-code-text small.qr-code-warning,
+.qr-code-panel small.qr-code-warning {
+  color: #b02f17;
+}
+
+/* The window is taller than a small screen: its body scrolls, so OK stays within reach. */
+.qr-code-panel .top-action-body {
+  max-height: calc(100vh - var(--editor-toolbar-height) - var(--editor-footer-height) - 96px);
+  overflow-y: auto;
+}
+
+.qr-code-panel .qr-code-preview {
+  height: 172px;
+  background: #fff;
+}
+
+.qr-code-panel .qr-code-preview img {
+  max-height: 150px;
+  image-rendering: pixelated;
+}
+
+.qr-code-check {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  color: var(--foreground);
+  font-size: 13px;
+  font-weight: 800;
+}
+
+.qr-code-check input {
+  accent-color: var(--primary);
+}
+
+html[data-theme="dark"] .qr-code-text small.qr-code-warning,
+html[data-theme="dark"] .qr-code-panel small.qr-code-warning {
+  color: #ff8a70;
 }
 
 /* An update arrived while this page was open: offer to reload (lib/newVersionWatch.ts). */

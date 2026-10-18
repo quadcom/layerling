@@ -125,6 +125,27 @@ Die SVG braucht geschlossene Umrisse; eine Zeichnung nur aus offenen Linien wird
 
 **Ein Bild (PNG oder JPG)** wird zu einem Umriss nachgezeichnet, und die Vorschau zeigt den Umriss. Unter {{ui:iconTag.part}} wählst du, ob der {{ui:iconTag.part.dark}} oder der {{ui:iconTag.part.light}} das Symbol wird; zuerst ist es der Teil, der nicht der Hintergrund ist. Durchsichtige Pixel gehören nie zum Symbol. Eine SVG, die nur ein einziges Bild enthält, wie Inkscape eine importierte Bitmap speichert, wird genauso nachgezeichnet. Der Umriss folgt den Pixeln, ein kleines Bild gibt also einen rauen Rand: Bilder ab einigen hundert Pixeln eignen sich am besten. {{ui:iconTag.replace}} nimmt von einem Bild den Teil, der nicht sein Hintergrund ist.
 
+## QR-Codes
+
+Ein QR-Code macht aus einem Text oder einer Webadresse ein Muster, das eine Handykamera liest: ein Link zu deinem Shop auf einem Schild, der WLAN-Name auf einem Untersetzer, eine Telefonnummer am Schlüsselanhänger.
+
+Wähle in der Formenbibliothek {{ui:shape.qrCode}}. Ein Fenster öffnet sich; der Cursor steht schon im Textfeld:
+
+- **{{ui:qrCode.text}}:** was der Code sagt. Eingabe erzeugt den Code, Umschalt+Eingabe beginnt eine neue Zeile. Unter dem Feld siehst du, wie viel vom Platz belegt ist; Umlaute und andere Sonderzeichen brauchen zwei Byte. Ist der Text zu lang, sagt das Feld es dir.
+- **{{ui:qrCode.errorCorrection}}:** L, M, Q oder H. Eine höhere Stufe wird noch gelesen, wenn ein Teil des Codes verschmutzt oder zerkratzt ist (L etwa 7 %, M 15 %, Q 25 %, H 30 %), braucht für denselben Text aber mehr Module, jedes Modul wird also kleiner. Zuerst ist M gewählt.
+- **{{ui:qrCode.style}}:** {{ui:qrCode.style.code}} baut den Code allein, 4 mm hoch. {{ui:qrCode.style.raised}} setzt ihn 1 mm hoch auf eine weiße Platte von 3 mm, als Bündel aus zwei Farben, sodass ein Mehrfarbdruck den Code dunkel und die Platte hell druckt. {{ui:qrCode.style.engraved}} schneidet den Code 1 mm tief in die Platte.
+- **{{ui:qrCode.sizeBy}}:** Tippe die {{ui:qrCode.sizeBy.width}} des ganzen Codes ein (zuerst 40 mm) oder die Größe eines Moduls; die andere Zahl steht darunter. Module unter 0,8 mm bekommen eine Warnung. Das ist eine Faustregel für eine 0,4-mm-Düse, keine Garantie: Drucker, Material, Farben und das Handy spielen alle mit.
+- **{{ui:qrCode.quietZone}}:** Scanner brauchen um den Code einen leeren Rand von vier Modulen. Auf einer Platte gehört der Rand zur Platte; schalte ihn nur ab, wenn die Platte auf einer größeren hellen Fläche sitzt. Der Code allein hat keinen eigenen Rand: Lass den Platz rundherum frei.
+- **Höhen:** die Höhe des Codes, auf einer Platte die Codehöhe oder Gravurtiefe, und die Plattendicke.
+
+Die Vorschau zeigt den Code, wie er gebaut wird. {{ui:qrCode.ok}} stellt ihn in die Mitte der Platte.
+
+Der Code ist ein Körper wie jeder andere: Verschiebe ihn, drehe ihn, skaliere ihn (Breite und Tiefe gleich lassen, sonst wird der Code verzerrt), gruppiere ihn, oder mach ihn zur Aussparung und gruppiere ihn in ein eigenes Teil, um ihn dort einzugravieren. Skalieren skaliert den ganzen Code; jedes Modul bleibt quadratisch.
+
+Die Karte {{ui:qrCode.title}} oben in seinen Einstellungen enthält den Text. Ändere ihn und klicke auf {{ui:qrCode.regenerate}}: Der Code wird dort neu gebaut, wo er steht, und so breit, wie er gerade ist. Fehlerkorrektur, Ruhezone und Bauart bleiben, wie sie gewählt wurden; für andere Einstellungen erzeuge einen neuen Code aus der Bibliothek.
+
+Scanne den Code vor dem Druck mit deinem Handy, und nach dem Druck noch einmal. Dunkel auf hell liest sich am besten; einen hellen Code auf dunkler Platte liest nicht jedes Handy.
+
 ## Text auf dem Kreisbogen
 
 Soll die Beschriftung nicht gerade laufen, sondern dem Rand einer Münze, eines Deckels oder eines Rings folgen? Dafür gibt es die Einstellung {{ui:prop.textCurved}}.

@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { sketchReferenceShapeOnWorkplane } from "@/lib/editorSketchCad";
-import { REVOLVE_REFERENCE_WORKPLANE } from "@/lib/placementWorkplane";
+import { REVOLVE_REFERENCE_WORKPLANE, revolveBodyStandsUpright } from "@/lib/placementWorkplane";
 import type { WorkplaneShape } from "@/types/layerling";
 
 function box(overrides: Partial<WorkplaneShape> = {}): WorkplaneShape {
@@ -23,5 +23,17 @@ describe("the other bodies in a revolve sketch (#525)", () => {
     expect(shown.width).toBeCloseTo(20);
     expect(shown.depth).toBeCloseTo(25);
     expect(shown.z).toBeCloseTo(-(10 + 25 / 2));
+  });
+});
+
+describe("a revolved body opened again for editing (#525)", () => {
+  it("stands upright when it has no turn or only one about the vertical", () => {
+    expect(revolveBodyStandsUpright({ rotation: 0 })).toBe(true);
+    expect(revolveBodyStandsUpright({ rotation: 90, rotationX: 0, rotationZ: 0 })).toBe(true);
+  });
+
+  it("does not when it lies down or leans", () => {
+    expect(revolveBodyStandsUpright({ rotation: 0, rotationX: 90 })).toBe(false);
+    expect(revolveBodyStandsUpright({ rotation: 0, rotationZ: 45 })).toBe(false);
   });
 });

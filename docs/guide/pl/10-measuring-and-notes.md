@@ -61,6 +61,8 @@ Notatka zapisuje to, czego geometria nie mówi: „Ta śruba jest o 0,3 mm za ci
 - Jeśli umieścisz notatkę **na bryle**, porusza się razem z nią.
 - Jeśli umieścisz ją **obok**, zostaje na płaszczyźnie roboczej ({{ui:note.free}}).
 - {{ui:note.detach}} odpina przypiętą notatkę od bryły.
+- {{ui:editor.tool.group}} zabiera przypiętą notatkę do grupy; {{ui:editor.tool.ungroup}} przekazuje ją widocznej części pod nią, także grupie w środku. Dopóki grupa jest otwarta przez {{ui:group.edit}}, jej notatki poruszają się z częścią pod nimi i wracają do grupy po {{ui:group.done}}; anulowanie przywraca je do stanu sprzed edycji.
+- Gdy jej bryła zostanie usunięta albo pod nią nie ma już widocznej bryły, notatka zostaje tam, gdzie stała, na płaszczyźnie roboczej.
 - Przeciąganie przesuwa notatkę, a kliknięcie otwiera ją do edycji.
 - Podczas pisania [[Enter]] zachowuje tekst, a [[Esc]] przywraca go do stanu sprzed rozpoczęcia. [[Shift]]+[[Enter]] zaczyna nowy wiersz.
 

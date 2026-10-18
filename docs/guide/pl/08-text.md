@@ -124,6 +124,27 @@ SVG potrzebuje zamkniętych konturów. Rysunek z samych otwartych linii nie moż
 
 **Obraz (PNG albo JPG)** zostaje obrysowany konturem, a podgląd pokazuje kontur. W {{ui:iconTag.part}} wybierasz, czy ikoną ma być {{ui:iconTag.part.dark}}, czy {{ui:iconTag.part.light}}. Na początku jest to część, która nie jest tłem. Przezroczyste piksele nigdy nie należą do ikony. SVG, który zawiera tylko jeden obraz, tak jak Inkscape zapisuje zaimportowaną bitmapę, jest obrysowywany tak samo. Kontur podąża za pikselami, więc mały obraz daje poszarpaną krawędź. Najlepiej działają obrazy od kilkuset pikseli w górę. {{ui:iconTag.replace}} bierze tę część obrazu, która nie jest jego tłem.
 
+## Kody QR
+
+Kod QR zamienia tekst lub adres strony we wzór, który odczytuje aparat telefonu: link do twojego sklepu na tabliczce, nazwa Wi-Fi na podkładce, numer telefonu na breloku.
+
+Wybierz {{ui:shape.qrCode}} w bibliotece kształtów. Otworzy się okno; kursor stoi już w polu tekstowym:
+
+- **{{ui:qrCode.text}}:** co mówi kod. Enter tworzy kod, Shift+Enter zaczyna nowy wiersz. Pod polem widać, ile miejsca jest zajęte; polskie litery i inne znaki specjalne zajmują dwa bajty. Gdy tekst jest za długi, pole o tym powie.
+- **{{ui:qrCode.errorCorrection}}:** L, M, Q lub H. Wyższy poziom da się odczytać, nawet gdy część kodu jest brudna lub porysowana (L około 7 %, M 15 %, Q 25 %, H 30 %), ale dla tego samego tekstu potrzebuje więcej modułów, więc każdy moduł jest mniejszy. Na początku wybrane jest M.
+- **{{ui:qrCode.style}}:** {{ui:qrCode.style.code}} buduje sam kod, wysoki na 4 mm. {{ui:qrCode.style.raised}} stawia go na wysokość 1 mm na białej płytce grubości 3 mm, jako pakiet dwóch kolorów, żeby druk wielokolorowy wydrukował kod ciemno, a płytkę jasno. {{ui:qrCode.style.engraved}} wycina kod na 1 mm w płytce.
+- **{{ui:qrCode.sizeBy}}:** wpisz {{ui:qrCode.sizeBy.width}} całego kodu (na początku 40 mm) albo rozmiar jednego modułu; druga liczba jest podana poniżej. Moduły mniejsze niż 0,8 mm dostają ostrzeżenie. To reguła orientacyjna dla dyszy 0,4 mm, nie gwarancja: znaczenie mają drukarka, materiał, kolory i telefon.
+- **{{ui:qrCode.quietZone}}:** skanery potrzebują wokół kodu pustego marginesu o szerokości czterech modułów. Na płytce margines jest częścią płytki; wyłącz go tylko wtedy, gdy płytka leży na większej jasnej powierzchni. Sam kod nie ma własnego marginesu: zostaw wokół niego wolne miejsce.
+- **Wysokości:** wysokość kodu, na płytce wysokość kodu lub głębokość grawerunku, oraz grubość płytki.
+
+Podgląd pokazuje kod tak, jak zostanie zbudowany. {{ui:qrCode.ok}} stawia go na środku stołu.
+
+Kod jest bryłą jak każda inna: przesuwaj go, obracaj, skaluj (szerokość i głębokość zostaw równe, inaczej kod się zniekształci), grupuj, albo zamień go w otwór i zgrupuj z własną częścią, żeby go w niej wygrawerować. Skalowanie skaluje cały kod; każdy moduł pozostaje kwadratowy.
+
+Karta {{ui:qrCode.title}} na górze jego ustawień zawiera tekst. Zmień go i kliknij {{ui:qrCode.regenerate}}: kod zostanie zbudowany od nowa tam, gdzie stoi, i tak szeroki, jak jest teraz. Korekcja błędów, strefa ciszy i wykonanie zostają takie, jak je wybrano; dla innych ustawień utwórz nowy kod z biblioteki.
+
+Zeskanuj kod telefonem przed drukiem i jeszcze raz po nim. Najlepiej czyta się ciemne na jasnym; jasnego kodu na ciemnej płytce nie odczyta każdy telefon.
+
 ## Tekst na łuku okręgu
 
 Napis ma biec nie prosto, tylko wzdłuż krawędzi monety, pokrywki albo pierścienia? Do tego służy ustawienie {{ui:prop.textCurved}}.

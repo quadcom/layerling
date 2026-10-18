@@ -4,6 +4,7 @@ import { threadFootprintPatch } from "@/lib/threadGeometry";
 import { gridfinityFootprintPatch } from "@/lib/gridfinityGeometry";
 import { MCP_SHAPE_SETTING_KEYS } from "@/lib/mcpShapeSettings";
 import { bentTubeSegmentsEqual } from "@/lib/bentTubeGeometry";
+import { qrSettingsEqual } from "@/lib/qrCode";
 import type { SketchStroke, WorkplaneShape } from "@/types/layerling";
 
 /** Bauwerte der Wabengitter, die es nur noch in alten Entwuerfen gibt: Die Form wird nicht mehr angeboten (#223), bleibt aber bearbeitbar. */
@@ -26,13 +27,13 @@ export function normalizeDegrees(value: number) {
   return ((value % 360) + 360) % 360;
 }
 
-export function cleanRotationDegrees(value: number, precision = 1) {
+export function cleanRotationDegrees(value: number, precision = 2) {
   if (!Number.isFinite(value)) {
     return 0;
   }
   const normalized = normalizeDegrees(value);
   const rounded = Number(normalized.toFixed(precision));
-  const zeroThreshold = precision <= 1 ? 0.5 : 0.05;
+  const zeroThreshold = precision <= 2 ? 0.5 : 0.05;
   if (rounded < zeroThreshold || rounded >= 360 - zeroThreshold || Object.is(rounded, -0)) {
     return 0;
   }
@@ -588,6 +589,7 @@ export function workplaneShapesEqual(a: WorkplaneShape, b: WorkplaneShape) {
     a.gridfinityType === b.gridfinityType &&
     a.gridfinityLip === b.gridfinityLip &&
     a.gridfinityMagnets === b.gridfinityMagnets &&
+    a.gridfinityHalfGrid === b.gridfinityHalfGrid &&
     a.gridfinityLabelBack === b.gridfinityLabelBack &&
     a.gridfinityLabelFront === b.gridfinityLabelFront &&
     a.gridfinityLabelLeft === b.gridfinityLabelLeft &&
@@ -606,6 +608,12 @@ export function workplaneShapesEqual(a: WorkplaneShape, b: WorkplaneShape) {
     a.gridfinityLabelRightOffset === b.gridfinityLabelRightOffset &&
     a.gridfinityLabelCorner === b.gridfinityLabelCorner &&
     a.gridfinityLabelCornerSize === b.gridfinityLabelCornerSize &&
+    a.gridfinityScoopBack === b.gridfinityScoopBack &&
+    a.gridfinityScoopFront === b.gridfinityScoopFront &&
+    a.gridfinityScoopLeft === b.gridfinityScoopLeft &&
+    a.gridfinityScoopRight === b.gridfinityScoopRight &&
+    a.gridfinityScoopRadius === b.gridfinityScoopRadius &&
+    a.gridfinityFloorHeight === b.gridfinityFloorHeight &&
     a.dovetailNeckWidth === b.dovetailNeckWidth &&
     a.dovetailClearance === b.dovetailClearance &&
     a.loftBottomOutline === b.loftBottomOutline &&
@@ -657,6 +665,7 @@ export function workplaneShapesEqual(a: WorkplaneShape, b: WorkplaneShape) {
     Boolean(a.textStretch) === Boolean(b.textStretch) &&
     JSON.stringify(a.textKeyring ?? null) === JSON.stringify(b.textKeyring ?? null) &&
     JSON.stringify(a.textEdge ?? null) === JSON.stringify(b.textEdge ?? null) &&
+    qrSettingsEqual(a.qrCode, b.qrCode) &&
     a.importedMesh === b.importedMesh &&
     a.imagePlate === b.imagePlate &&
     a.sketchProfile === b.sketchProfile &&

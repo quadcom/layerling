@@ -15,11 +15,15 @@ import {
   type GridfinityLabelPieces,
   type GridfinityLabelProfile,
   type GridfinityPlan,
+  type GridfinityScoopPieces,
   type GridfinityStep,
   gridfinityLabelCornerOutline,
   gridfinityLabelPieces,
   gridfinityLabelProfileEnds,
   gridfinityPlan,
+  gridfinityScoopPieces,
+  gridfinityScoopPoint,
+  gridfinityScoopSection,
   gridfinityWallProfile,
 } from "@/lib/gridfinityGeometry";
 
@@ -36,12 +40,16 @@ import {
  * label shelves are joined after that, in the shape's own frame, from the same
  * pieces as the display mesh (gridfinityLabelPieces): each a prism cut to the
  * bin's inside, the corner pieces trimmed to lie under the shelves they join.
+ * The finger scoops (gridfinityScoopPieces) are taken out of the inside's
+ * cutter before it is cut, each with a true arc, so the cut leaves them standing.
  */
 
 /** z up to y up: (x, y, z) -> (x, z, -y). */
 const Z_TO_Y_UP = [1, 0, 0, 0, 0, 0, 1, 0, 0, -1, 0, 0];
 /** How far a cutting loft reaches past the face it opens, so the faces do not coincide. */
 const PAST = 0.01;
+/** Less than this taken from the cutter (mm³) is a scoop the kernel's cut missed; the smallest scoop takes about 29. */
+const SCOOP_MISSED = 1e-3;
 
 function oneSolid(cad: OcctKernel, shape: ShapeHandle, what: string) {
   const solids = cad.isSolid(shape) ? [shape] : cad.getSubShapes(shape, "solid");
@@ -80,11 +88,12 @@ function prism(cad: OcctKernel, hx: number, hz: number, radius: number, from: nu
   return cad.extrude(cad.makeFace(roundedWire(cad, 0, 0, hx, hz, radius, from)), 0, 0, to - from);
 }
 
-function binSolid(cad: OcctKernel, plan: GridfinityPlan) {
+function binSolid(cad: OcctKernel, plan: GridfinityPlan, scoops: GridfinityScoopPieces | null) {
   const hx = plan.size.width / 2;
   const hz = plan.size.depth / 2;
-  const cellHalf = GRIDFINITY_GRID / 2 - GRIDFINITY_CLEARANCE;
-  const wall = gridfinityWallProfile(plan);
+  const cellHalf = plan.pitch / 2 - GRIDFINITY_CLEARANCE;
+  // The inside is built with a sharp floor edge; a rounding is filleted on it afterwards, with true arcs.
+  const wall = gridfinityWallProfile(plan, 0);
   const wallTop = wall[1][1];
   const feet = plan.cells.map((cell) => steppedSolid(cad, cell.x, cell.z, cellHalf, cellHalf, GRIDFINITY_BIN_RADIUS, GRIDFINITY_FOOT));
   let body = oneSolid(cad, cad.fuseAll([...feet, prism(cad, hx, hz, GRIDFINITY_BIN_RADIUS, GRIDFINITY_FOOT_HEIGHT, wallTop)]), "bin");
@@ -92,7 +101,18 @@ function binSolid(cad: OcctKernel, plan: GridfinityPlan) {
   const inside: GridfinityStep[] = wall.slice(2).reverse();
   if (plan.lip) inside.push([0, wallTop], [0, wallTop + PAST]);
   else inside.push([inside[inside.length - 1][0], wallTop + PAST]);
-  body = oneSolid(cad, cad.cut(body, steppedSolid(cad, 0, 0, hx, hz, GRIDFINITY_BIN_RADIUS, inside)), "bin");
+  let cutter = steppedSolid(cad, 0, 0, hx, hz, GRIDFINITY_BIN_RADIUS, inside);
+  if (plan.floorRounding > 0) {
+    const floor = inside[0][1];
+    const floorEdges = cad.getSubShapes(cutter, "edge").filter((edge) => {
+      const box = cad.getBoundingBox(edge);
+      return Math.abs(box.zmin - floor) < 1e-6 && Math.abs(box.zmax - floor) < 1e-6;
+    });
+    cutter = cad.fillet(cutter, floorEdges, plan.floorRounding);
+  }
+  if (scoops) cutter = scoopedCutter(cad, cutter, scoops);
+  // A bin without the lip whose floor is raised to the top is one solid block, with no inside to cut.
+  if (plan.floor < wallTop) body = oneSolid(cad, cad.cut(body, cutter), "bin");
   if (plan.magnetHoles.length > 0) {
     const holes = plan.magnetHoles.map((hole) => cad.translate(cad.makeCylinder(GRIDFINITY_MAGNET_DIAMETER / 2, GRIDFINITY_MAGNET_DEPTH + PAST), hole.x, -hole.z, -PAST));
     body = oneSolid(cad, cad.cutAll(body, holes), "bin");
@@ -138,10 +158,42 @@ function labelSolids(cad: OcctKernel, pieces: GridfinityLabelPieces) {
   return [...shelves, ...corners];
 }
 
+/**
+ * The cutter for the inside less the finger scoops, so the cut leaves them standing: each scoop is its section, with a
+ * true arc, pushed along its wall. Built in the kernel's frame (z up) from the shape's points (y up).
+ */
+function scoopedCutter(cad: OcctKernel, cutter: ShapeHandle, pieces: GridfinityScoopPieces) {
+  const { outline, arc } = gridfinityScoopSection(pieces);
+  for (const scoop of pieces.scoops) {
+    const point = ([v, y]: [number, number]) => {
+      const [x, py, z] = gridfinityScoopPoint(pieces, scoop, scoop.from, [v, y]);
+      return { x, y: -z, z: py };
+    };
+    const corners = [outline[0], outline[1], arc[0], arc[2], outline[outline.length - 1]].map(point);
+    const edges = [
+      cad.makeLineEdge(corners[0], corners[1]),
+      cad.makeLineEdge(corners[1], corners[2]),
+      cad.makeArcEdge(corners[2], point(arc[1]), corners[3]),
+      cad.makeLineEdge(corners[3], corners[4]),
+      cad.makeLineEdge(corners[4], corners[0]),
+    ];
+    const end = gridfinityScoopPoint(pieces, scoop, scoop.to, [0, 0]);
+    const start = gridfinityScoopPoint(pieces, scoop, scoop.from, [0, 0]);
+    const scoopSolid = cad.extrude(cad.makeFace(cad.makeWire(edges)), end[0] - start[0], start[2] - end[2], 0);
+    const before = cad.getVolume(cutter);
+    const next = cad.cut(cutter, scoopSolid);
+    // A cut the kernel gets wrong can leave the cutter as it was; the STEP export would then lose the scoop without a word.
+    if (before - cad.getVolume(next) < SCOOP_MISSED) throw new Error("The Gridfinity bin's finger scoop could not be cut");
+    cutter = next;
+  }
+  return cutter;
+}
+
 /** The Gridfinity part's exact solid in the shape's own frame, y up. Throws when the kernel cannot build it. */
 export function gridfinityPartSolid(cad: OcctKernel, part: CadModifierGridfinityPart): ShapeHandle {
   const plan = gridfinityPlan(part);
-  const solid = plan.type === "bin" ? binSolid(cad, plan) : baseplateSolid(cad, plan);
+  const scoopPieces = gridfinityScoopPieces(part);
+  const solid = plan.type === "bin" ? binSolid(cad, plan, scoopPieces) : baseplateSolid(cad, plan);
   if (!cad.isValid(solid) || !(cad.getVolume(solid) > 0)) throw new Error("The Gridfinity body is not a valid solid");
   const standing = cad.transform(solid, Z_TO_Y_UP);
   const pieces = gridfinityLabelPieces(part);

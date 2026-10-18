@@ -60,9 +60,16 @@ describe("workplane shape helpers", () => {
     expect(normalizeDegrees(-90)).toBe(270);
     expect(normalizeDegrees(450)).toBe(90);
     expect(cleanRotationDegrees(Number.NaN)).toBe(0);
-    expect(cleanRotationDegrees(-0.2)).toBe(0);
-    expect(cleanRotationDegrees(359.8)).toBe(0);
-    expect(cleanRotationDegrees(12.34)).toBe(12.3);
+    expect(cleanRotationDegrees(-0.02)).toBe(0);
+    expect(cleanRotationDegrees(359.98)).toBe(0);
+    expect(cleanRotationDegrees(12.347)).toBe(12.35);
+  });
+
+  it("keeps an angle to two decimals, so half of 22.5 degrees stays 11.25 (#552)", () => {
+    expect(cleanRotationDegrees(11.25)).toBe(11.25);
+    expect(cleanRotationDegrees(-11.25)).toBe(348.75);
+    expect(cleanRotationDegrees(22.5)).toBe(22.5);
+    expect(canonicalizeShape({ id: "a", name: "A", kind: "box", color: "#ff0000", x: 0, z: 0, elevation: 0, size: 10, width: 10, depth: 10, height: 10, rotation: 11.25, locked: false, hidden: false }).rotation).toBe(11.25);
   });
 
   it("preserves the meaningful yaw of low-sided circular primitives", () => {
@@ -184,7 +191,7 @@ describe("workplane shape helpers", () => {
 
     expect(canonical.rotation).toBe(0);
     expect(canonical.rotationX).toBe(0);
-    expect(canonical.rotationZ).toBe(45);
+    expect(canonical.rotationZ).toBe(45.04);
     expect(canonical.mirrorX).toBeUndefined();
     expect(canonical.mirrorY).toBe(true);
     expect(canonical.groupedShapes?.[0].rotation).toBe(0);

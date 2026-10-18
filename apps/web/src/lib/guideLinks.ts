@@ -44,6 +44,7 @@ export const GUIDE_SECTIONS = {
   textFill: { chapter: "text", de: "kontur-silhouette-und-breiter", en: "outline-silhouette-and-wider", nl: "contour-silhouet-en-breder", ru: "kontur-siluet-i-shire", cs: "obrys-silueta-a-rozsireni", sl: "kontura-silhueta-in-sirse", hu: "koervonal-sziluett-es-szelesebb" },
   textLayers: { chapter: "text", de: "schichten-und-namensschilder", en: "layers-and-name-tags", nl: "lagen-en-naambordjes", ru: "sloi-i-birki-s-imenem", cs: "vrstvy-a-jmenovky", sl: "plasti-in-napisi-z-imenom", hu: "retegek-es-nevcimkek" },
   iconTag: { chapter: "text", de: "symbolschilder", en: "icon-tags", nl: "icoonbordjes", ru: "birki-so-znachkom", cs: "stitky-se-symbolem", sl: "simbolne-oznake", hu: "ikoncimkek" },
+  qrCode: { chapter: "text", de: "qr-codes", en: "qr-codes", nl: "qr-codes", fr: "codes-qr", ru: "qr-kody", cs: "qr-kody", sl: "kode-qr", hu: "qr-kodok" },
   myShapes: { chapter: "shapes", de: "eigene-formen", en: "custom-shapes", nl: "eigen-vormen", ru: "sobstvennye-figury", cs: "vlastni-tvary", sl: "oblike-po-meri", hu: "sajat-alakzatok" },
   objectList: { chapter: "select", de: "die-objektliste", en: "the-object-list", nl: "de-objectlijst", ru: "spisok-obektov", cs: "seznam-objektu", sl: "seznam-objektov", hu: "az-objektumlista" },
   pattern: { chapter: "select", de: "muster-reihe-und-kreis", en: "patterns-row-and-circle", nl: "patronen-rij-en-cirkel", ru: "massivy-ryad-i-krug", cs: "opakovani-v-rade-a-po-kruznici", sl: "polja-vrsta-in-krog", hu: "ismetles-sor-es-koer" },
@@ -127,6 +128,7 @@ type GuideShape = {
   importedMesh?: { sourceFormat?: string };
   layeredText?: boolean;
   layeredIcon?: boolean;
+  qrCode?: unknown;
 };
 
 export function guideSectionForShape(shape: GuideShape): GuideSection | undefined {
@@ -134,6 +136,8 @@ export function guideSectionForShape(shape: GuideShape): GuideSection | undefine
   if (shape.layeredText && shape.groupedShapes?.length) return "textLayers";
   // An icon tag is a bundle too; its card is explained next to the name tag.
   if (shape.layeredIcon && shape.groupedShapes?.length) return "iconTag";
+  // A QR code (#553), alone or on its plate, is explained with the texts and tags.
+  if (shape.qrCode) return "qrCode";
   if (shape.groupedShapes?.length) {
     if (shape.groupOperation === "bundle") return "bundling";
     if (shape.groupOperation === "intersection") return "intersection";

@@ -125,6 +125,27 @@ The SVG needs closed outlines; a drawing of open lines only cannot become a tag.
 
 **A picture (PNG or JPG)** is traced into an outline, and the preview shows the outline. Under {{ui:iconTag.part}} you choose whether the {{ui:iconTag.part.dark}} or the {{ui:iconTag.part.light}} becomes the icon; at first it is the part that is not the background. Transparent pixels never belong to the icon. An SVG that holds nothing but one picture, as Inkscape saves an imported bitmap, is traced the same way. The outline follows the pixels, so a small picture gives a rough edge: pictures of a few hundred pixels or more work best. {{ui:iconTag.replace}} takes the part of a picture that is not its background.
 
+## QR codes
+
+A QR code turns a text or a web address into a pattern a phone camera reads: a link to your shop on a sign, the Wi-Fi name on a coaster, a phone number on a key tag.
+
+Choose {{ui:shape.qrCode}} in the shape library. A window opens; the cursor is already in the text field:
+
+- **{{ui:qrCode.text}}:** what the code says. Enter makes the code, Shift+Enter starts a new line. Below the field you see how much of the room is used; umlauts and other special letters take two bytes. When the text is too long, the field says so.
+- **{{ui:qrCode.errorCorrection}}:** L, M, Q or H. A higher level can still be read when part of the code is dirty or scratched (L about 7 %, M 15 %, Q 25 %, H 30 %), but needs more modules for the same text, so each module gets smaller. M is chosen at first.
+- **{{ui:qrCode.style}}:** {{ui:qrCode.style.code}} makes the code alone, 4 mm high. {{ui:qrCode.style.raised}} puts it 1 mm high on a white plate 3 mm thick, as a bundle of two colours, so a multicolour print prints the code dark and the plate light. {{ui:qrCode.style.engraved}} cuts the code 1 mm deep into the plate.
+- **{{ui:qrCode.sizeBy}}:** type the {{ui:qrCode.sizeBy.width}} of the whole code (40 mm at first) or the size of one module; the other number is shown below. Modules under 0.8 mm get a warning. That is a rule of thumb for a 0.4 mm nozzle, not a guarantee: printer, material, colours and the phone all play a part.
+- **{{ui:qrCode.quietZone}}:** scanners need an empty rim four modules wide round the code. On a plate the rim is part of the plate; switch it off only if the plate sits on a larger light surface. The code alone has no rim of its own: leave the room free round it.
+- **Heights:** the height of the code, or on a plate the code height or engraving depth, and the plate thickness.
+
+The preview shows the code as it will be built. {{ui:qrCode.ok}} puts it in the middle of the plate.
+
+The code is a body like any other: move it, turn it, scale it (keep width and depth the same, or the code is stretched), group it, or make it a hole and group it into a part of your own to engrave it there. Scaling it scales the whole code; each module stays square.
+
+The card {{ui:qrCode.title}} at the top of its settings holds the text. Change it and click {{ui:qrCode.regenerate}}: the code is built again where it stands and as wide as it is now. Error correction, quiet zone and build stay as they were chosen; for other choices make a new code from the library.
+
+Scan the code with your phone before you print it, and once more after printing. Dark on light reads best; a light code on a dark plate is not read by every phone.
+
 ## Text on a circular arc
 
 Should the lettering not run straight but follow the edge of a coin, a lid or a ring? For that there is the setting {{ui:prop.textCurved}}.

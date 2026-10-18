@@ -23,7 +23,7 @@ En tegneplade med en pen opfører sig som en mus: spidsen er venstre knap, sidek
 
 Kuben øverst til venstre viser hvor du kigger. Et klik på en af dens sider springer til den lige visning fra top, bund, for, bag, venstre eller højre. Et klik på et hjørne af kuben kigger på modellen diagonalt fra det hjørne, og et klik nær en kant kigger fra den kant, mellem to sider; stedet lyser op mens markøren er på det. Taltasterne [[1]] til [[6]] giver også de lige visninger. Hold [[Shift]] med dem og visningen zoomer også til markeringen, ligesom [[Shift]]+[[F]].
 
-Træk i kuben for at dreje visningen rundt, ligesom at trække med højre museknap. Med intet valgt drejer piletasterne også visningen: 15° pr. tryk, 90° med [[Shift]]. De drejer modellen den vej de peger - [[→]] drejer dens forside til højre, [[↑]] vipper dens forside opad. Hvis noget er valgt, flytter pilene det; klik på tom plads først for at dreje visningen. På en berøringsskærm virker dette med én finger, uden at slå {{ui:camera.touchRotate}} til.
+Træk i kuben for at dreje visningen rundt, ligesom at trække med højre museknap. Med intet valgt drejer piletasterne også visningen: 15° pr. tryk, 90° med [[Shift]]. De drejer modellen den vej de peger - [[→]] drejer dens forside til højre, [[↑]] vipper dens forside opad. Med [[Ctrl]] holdt nede flytter pilene i stedet visningen hen over skærmen: en tiendedel af billedet pr. tryk, halvdelen med [[Shift]] oveni. Modellen flytter sig den vej, de peger. Hvis noget er valgt, flytter pilene det; klik på tom plads først for at dreje visningen. På en berøringsskærm virker dette med én finger, uden at slå {{ui:camera.touchRotate}} til.
 
 ### Kamerabjælken
 

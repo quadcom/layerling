@@ -119,6 +119,12 @@ Több test együtt tér vissza, úgy elhelyezve, ahogy egymáshoz képest állta
 
 A {{ui:myShapes.title}} ebben a böngészőben élnek, a tervektől külön, és a következő indításkor is megvannak. A kezdőlapon a {{ui:dashboard.backupAll}} a tervekkel együtt menti őket, a mentés megnyitása pedig mindkettőt visszahozza. Ha csak az alakzatokat vinnéd át egy másik böngészőbe, a {{ui:myShapes.backup}} (a lefelé mutató nyíl) ZIP-fájlba menti őket, az {{ui:myShapes.load}} (a felfelé mutató nyíl) pedig ott visszahozza őket. Az {{ui:myShapes.load}} egyes `.lyl` terveket is elfogad; mindegyikből egy alakzat lesz. A már meglévő alakzatok nem kerülnek be kétszer.
 
+### Mappák
+
+Sok saját alakzatot könnyebb mappákba rendezni. Az {{ui:myShapes.newFolder}} (a pluszos mappa a {{ui:myShapes.saveSelection}} mellett) nevet kér, és mappát hoz létre legfelül; egy mappa pluszos mappa gombja, az {{ui:myShapes.newSubfolder}}, abban hoz létre egyet. A mappák három szint mélyek lehetnek: a harmadik szinten lévő mappa alakzatokat tárol, de további mappákat nem. A mappák azok fölött az alakzatok fölött állnak, amelyek egyik mappában sincsenek, név szerint rendezve, és a nyilukkal nyithatók és csukhatók; a mappa melletti szám a benne és az alatta lévő mappákban lévő alakzatokat számolja. Mentéskor a név melletti listában választod ki a mappát; a {{ui:myShapes.noFolder}} lehetőséggel az alakzat legfelül marad.
+
+A csempén lévő nyilas mappa másik mappába helyezi át az alakzatot, vagy a {{ui:myShapes.noFolder}} lehetőséggel ki a mappából. A mappa ceruzája átnevezi, a kuka rákérdezés után törli a benne lévő mappákkal és alakzatokkal együtt. Magát a mappát nem lehet áthelyezni: hozd létre az újat ott, ahová tartozik, és helyezd át bele az alakzatokat. A biztonsági mentés megtartja a mappákat, betöltéskor pedig az alakzatok ugyanoda kerülnek vissza. A szerveren a mappák a `Custom shapes` mappán belüli mappák.
+
 ### Saját alakzatok a szerveren
 
 Bekapcsolt [közös szerveres tárolónál](chapter:files-and-saving) a rész két csoportot mutat: {{ui:myShapes.onServer}} és {{ui:myShapes.inBrowser}}. Mentéskor kiválasztod, hová kerüljön az alakzat; kezdetben a szerver van kiválasztva. Ott a `Custom shapes` mappában él, saját `.lyl` fájlként, képpel, minden olyan eszközön elérhetően, amely eléri a szervert. Egy böngészős csempén a felhő a szerverre teszi az alakzatot; ezután már nem tárolódik kétszer.

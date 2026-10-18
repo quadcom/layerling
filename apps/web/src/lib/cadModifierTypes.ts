@@ -278,6 +278,7 @@ export type CadModifierGridfinityPart = {
   gridfinityType: GridfinityType;
   gridfinityLip: boolean;
   gridfinityMagnets: boolean;
+  gridfinityHalfGrid?: boolean;
   gridfinityLabelBack?: boolean;
   gridfinityLabelFront?: boolean;
   gridfinityLabelLeft?: boolean;
@@ -296,6 +297,12 @@ export type CadModifierGridfinityPart = {
   gridfinityLabelRightOffset?: number;
   gridfinityLabelCorner?: GridfinityLabelCorner;
   gridfinityLabelCornerSize?: number;
+  gridfinityScoopBack?: boolean;
+  gridfinityScoopFront?: boolean;
+  gridfinityScoopLeft?: boolean;
+  gridfinityScoopRight?: boolean;
+  gridfinityScoopRadius?: number;
+  gridfinityFloorHeight?: number;
   transform?: number[];
   expected?: { bounds: number[]; volume: number };
 };

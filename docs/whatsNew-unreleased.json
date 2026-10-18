@@ -1,1 +1,10 @@
-[]
+[
+  {
+    "title": {
+      "en": "Lock a move to one axis with X, Y and Z"
+    },
+    "body": {
+      "en": "As in Blender: while you draw a sketch line or drag a point, tap X or Y and the line or the move keeps to that axis until you click or let go. The tape measure takes X, Y and Z after its first point or while you move one: tap Z on the top corner of a part and click the plate to measure its height, without the faces in between catching the pointer. Dragging a body takes X and Y. The same key again lets go."
+    }
+  }
+]

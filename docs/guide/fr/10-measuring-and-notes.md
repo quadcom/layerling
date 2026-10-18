@@ -59,6 +59,8 @@ Une note enregistre ce que la géométrie ne dit pas : "Cette vis est trop serr�
 - Si vous placez le billet **sur un corps**, il voyage avec lui.
 - Si vous le placez **à côté**, il reste sur le plan de travail ({{ui:note.free}}).
 - {{ui:note.detach}} libère une note jointe du corps.
+- {{ui:editor.tool.group}} emporte une note jointe dans le groupe ; {{ui:editor.tool.ungroup}} la confie à la partie visible située dessous, y compris un groupe imbriqué. Tant qu'un groupe est ouvert avec {{ui:group.edit}}, ses notes suivent la partie située dessous et reviennent au groupe avec {{ui:group.done}} ; annuler les remet telles qu'elles étaient.
+- Si son corps est supprimé, ou si plus aucun corps visible ne se trouve dessous, la note reste là où elle était, sur le plan de travail.
 - Faire glisser déplace la note, un clic l'ouvre pour l'éditer.
 - Pendant que vous écrivez, [[Enter]] conserve le texte et [[Esc]] le remet tel qu'il était avant de commencer ; [[Shift]]+[[Enter]] démarre une nouvelle ligne.
 

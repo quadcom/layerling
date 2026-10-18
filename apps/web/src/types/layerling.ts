@@ -175,6 +175,8 @@ export type ShapeCustomization = {
   gridfinityLip?: boolean;
   /** Gridfinity bin: holes for 6 x 2 mm magnets under each foot. */
   gridfinityMagnets?: boolean;
+  /** Gridfinity bin: the size counts cells of 21 mm, each with a foot, four to a baseplate's socket; missing means the 42 mm grid. */
+  gridfinityHalfGrid?: boolean;
   /** Gridfinity bin: a label shelf along the back wall. */
   gridfinityLabelBack?: boolean;
   /** Gridfinity bin: a label shelf along the front wall. */
@@ -211,6 +213,18 @@ export type ShapeCustomization = {
   gridfinityLabelCorner?: GridfinityLabelCorner;
   /** Gridfinity bin: the size of that rounding or chamfer in mm; 0 leaves the corner sharp. */
   gridfinityLabelCornerSize?: number;
+  /** Gridfinity bin: a finger scoop along the back wall, the floor rising along a quarter circle into it. */
+  gridfinityScoopBack?: boolean;
+  /** Gridfinity bin: a finger scoop along the front wall. */
+  gridfinityScoopFront?: boolean;
+  /** Gridfinity bin: a finger scoop along the left wall. */
+  gridfinityScoopLeft?: boolean;
+  /** Gridfinity bin: a finger scoop along the right wall. */
+  gridfinityScoopRight?: boolean;
+  /** Gridfinity bin: the finger scoops' radius in mm; missing is half the height from the floor up to the lip's support, or to the top without the lip. */
+  gridfinityScoopRadius?: number;
+  /** Gridfinity bin: the floor's height inside in mm, measured from the underside; missing is 5.95, and at the highest the bin is solid up to the lip's support, or to the top without the lip. */
+  gridfinityFloorHeight?: number;
   /** Knurling: grooves straight along the axis, or crossed into diamonds. */
   knurlPattern?: "straight" | "diamond" | "round";
   /** Knurling: number of grooves around the grip. */
@@ -699,6 +713,8 @@ export type WorkplaneShape = {
   gridfinityLip?: boolean;
   /** Gridfinity bin: holes for 6 x 2 mm magnets under each foot. */
   gridfinityMagnets?: boolean;
+  /** Gridfinity bin: the size counts cells of 21 mm, each with a foot, four to a baseplate's socket; missing means the 42 mm grid. */
+  gridfinityHalfGrid?: boolean;
   /** Gridfinity bin: a label shelf along the back wall. */
   gridfinityLabelBack?: boolean;
   /** Gridfinity bin: a label shelf along the front wall. */
@@ -735,6 +751,18 @@ export type WorkplaneShape = {
   gridfinityLabelCorner?: GridfinityLabelCorner;
   /** Gridfinity bin: the size of that rounding or chamfer in mm; 0 leaves the corner sharp. */
   gridfinityLabelCornerSize?: number;
+  /** Gridfinity bin: a finger scoop along the back wall, the floor rising along a quarter circle into it. */
+  gridfinityScoopBack?: boolean;
+  /** Gridfinity bin: a finger scoop along the front wall. */
+  gridfinityScoopFront?: boolean;
+  /** Gridfinity bin: a finger scoop along the left wall. */
+  gridfinityScoopLeft?: boolean;
+  /** Gridfinity bin: a finger scoop along the right wall. */
+  gridfinityScoopRight?: boolean;
+  /** Gridfinity bin: the finger scoops' radius in mm; missing is half the height from the floor up to the lip's support, or to the top without the lip. */
+  gridfinityScoopRadius?: number;
+  /** Gridfinity bin: the floor's height inside in mm, measured from the underside; missing is 5.95, and at the highest the bin is solid up to the lip's support, or to the top without the lip. */
+  gridfinityFloorHeight?: number;
   /** Knurling: grooves straight along the axis, or crossed into diamonds. */
   knurlPattern?: "straight" | "diamond" | "round";
   /** Knurling: number of grooves around the grip. */
@@ -838,6 +866,11 @@ export type WorkplaneShape = {
    * edits the icon's width and the layers together and builds the stack again.
    */
   layeredIcon?: boolean;
+  /**
+   * A QR code (#553): the text and the choices it was made with, so the properties panel can make
+   * it again. On the code body itself, or on the plate group or bundle that holds it.
+   */
+  qrCode?: QrCodeSettings;
   /**
    * Set on a body made by wrapping around a cylinder (#106): its box is
    * centred on the cylinder's axis, and aligning, snapping and centring use
@@ -954,4 +987,20 @@ export type WorkplaneNote = {
    * a note, and travels with the design exactly like one (history, file, server).
    */
   kind?: "point";
+};
+
+export type QrErrorCorrection = "L" | "M" | "Q" | "H";
+/** What is built: the code alone, a plate with the code raised on it, or a plate with the code engraved. */
+export type QrStyle = "code" | "raised" | "engraved";
+/** What a QR body keeps so it can be made again from the inspector (#553). */
+export type QrCodeSettings = {
+  text: string;
+  errorCorrection: QrErrorCorrection;
+  /** Four modules of empty margin round the code - on a plate, the plate's rim. */
+  quietZone: boolean;
+  style: QrStyle;
+  /** The code's height (raised, or alone) or the engraving's depth, in mm. */
+  codeHeight: number;
+  /** The plate's thickness, in mm, for a plate. */
+  plateThickness: number;
 };

@@ -956,7 +956,7 @@ function isPileOfSolids(shape: WorkplaneShape) {
   return Boolean(shape.groupedShapes && shape.groupedShapes.length > 1 && !shape.importedMesh);
 }
 
-async function unionOverlappingExportMeshesRaw(shapes: WorkplaneShape[], meshes: MeshData[]) {
+async function unionOverlappingExportMeshesRaw(shapes: WorkplaneShape[], meshes: MeshData[], cut?: readonly boolean[]) {
   const gruppen = overlappingExportClusters(meshes.map((mesh) => meshBounds(mesh.vertices)));
   if (!gruppen.some((gruppe) => gruppe.length > 1 || isPileOfSolids(shapes[gruppe[0]]))) {
     return { meshes, quellen: meshes.map((_, index) => index), verschmolzen: 0, gescheitert: 0 };
@@ -977,7 +977,20 @@ async function unionOverlappingExportMeshesRaw(shapes: WorkplaneShape[], meshes:
     const created: ManifoldSolid[] = [];
     let vereinigt: MeshData | null = null;
     try {
-      const union = runtime ? shapesToManifoldUnion(runtime, gruppe.map((index) => shapes[index]), created, true) : null;
+      // A body a loose hole was cut from is joined as its cut mesh, not rebuilt from its uncut shape.
+      const union = !runtime ? null : gruppe.some((index) => cut?.[index])
+        ? runtime.Manifold.union(gruppe.map((index) => {
+            const source = meshDataToManifoldMesh(runtime, meshes[index]);
+            try {
+              const solid = runtime.Manifold.ofMesh(source);
+              created.push(solid);
+              return solid;
+            } finally {
+              disposeManifold(source);
+            }
+          }))
+        : shapesToManifoldUnion(runtime, gruppe.map((index) => shapes[index]), created, true);
+      if (union) created.push(union);
       if (union && union.status() === "NoError" && union.numTri() > 0) {
         vereinigt = manifoldMeshToMeshData(union.getMesh(), meshes[gruppe[0]].name);
       }
@@ -1082,9 +1095,9 @@ export async function exportBodiesWithLooseHoles(visible: readonly WorkplaneShap
 
 export async function exportSolidVolume(source: readonly WorkplaneShape[]) {
   const { visible } = visibleExportShapes(source);
-  const { solids, meshes: cut, holeCutsFailed } = await exportBodiesWithLooseHoles(visible);
+  const { solids, meshes: cut, cut: wasCut, holeCutsFailed } = await exportBodiesWithLooseHoles(visible);
   if (solids.length === 0) return { volumeMm3: 0, sideMm2: 0, flatMm2: 0, solids: 0, bodies: 0, unionFailed: 0 };
-  const { meshes, gescheitert } = await unionOverlappingExportMeshes(solids, cut);
+  const { meshes, gescheitert } = await unionOverlappingExportMeshes(solids, cut, wasCut);
   const volumeMm3 = meshes.reduce((sum, mesh) => sum + Math.abs(closedMeshVolume(mesh.vertices, mesh.faces)), 0);
   // The surface, for the estimate with walls and infill (#320).
   const areas = meshes.map((mesh) => meshSurfaceAreas(mesh.vertices, mesh.faces));
@@ -1228,16 +1241,16 @@ export function exportFaceColors(mesh: MeshData, solids: PartColorSolid[], fallb
   });
 }
 
-async function colorSeparatedExportMeshesRaw(shapes: WorkplaneShape[], meshes: MeshData[]) {
+async function colorSeparatedExportMeshesRaw(shapes: WorkplaneShape[], meshes: MeshData[], cut?: readonly boolean[]) {
   const farben = exportColorGroups(shapes.map((shape) => shape.color));
   if (farben.length <= 1) {
-    return unionOverlappingExportMeshesRaw(shapes, meshes);
+    return unionOverlappingExportMeshesRaw(shapes, meshes, cut);
   }
   const koerper: { mesh: MeshData; quelle: number; farbe: number }[] = [];
   let verschmolzen = 0;
   let gescheitert = 0;
   for (const [farbe, gruppe] of farben.entries()) {
-    const teil = await unionOverlappingExportMeshesRaw(gruppe.map((index) => shapes[index]), gruppe.map((index) => meshes[index]));
+    const teil = await unionOverlappingExportMeshesRaw(gruppe.map((index) => shapes[index]), gruppe.map((index) => meshes[index]), cut && gruppe.map((index) => cut[index]));
     teil.meshes.forEach((mesh, index) => koerper.push({ mesh, quelle: gruppe[teil.quellen[index]], farbe }));
     verschmolzen += teil.verschmolzen;
     gescheitert += teil.gescheitert;
@@ -1323,12 +1336,12 @@ function withoutSplinters<T extends { meshes: MeshData[] }>(result: T): T & { sp
   return { ...result, meshes, splinters };
 }
 
-export async function unionOverlappingExportMeshes(shapes: WorkplaneShape[], meshes: MeshData[]) {
-  return withoutSplinters(await unionOverlappingExportMeshesRaw(shapes, meshes));
+export async function unionOverlappingExportMeshes(shapes: WorkplaneShape[], meshes: MeshData[], cut?: readonly boolean[]) {
+  return withoutSplinters(await unionOverlappingExportMeshesRaw(shapes, meshes, cut));
 }
 
-export async function colorSeparatedExportMeshes(shapes: WorkplaneShape[], meshes: MeshData[]) {
-  return withoutSplinters(await colorSeparatedExportMeshesRaw(shapes, meshes));
+export async function colorSeparatedExportMeshes(shapes: WorkplaneShape[], meshes: MeshData[], cut?: readonly boolean[]) {
+  return withoutSplinters(await colorSeparatedExportMeshesRaw(shapes, meshes, cut));
 }
 
 export function disposeManifold(value: unknown) {
@@ -1941,13 +1954,13 @@ export function cleanShapePatch(patch: ShapeUpdatePatch): Partial<WorkplaneShape
   const { bakeTransform: _bakeTransform, ...rest } = patch;
   const next = { ...rest };
   if (typeof next.rotation === "number") {
-    next.rotation = cleanRotationDegrees(next.rotation, 1);
+    next.rotation = cleanRotationDegrees(next.rotation, 2);
   }
   if (typeof next.rotationX === "number") {
-    next.rotationX = cleanRotationDegrees(next.rotationX, 1);
+    next.rotationX = cleanRotationDegrees(next.rotationX, 2);
   }
   if (typeof next.rotationZ === "number") {
-    next.rotationZ = cleanRotationDegrees(next.rotationZ, 1);
+    next.rotationZ = cleanRotationDegrees(next.rotationZ, 2);
   }
   return next;
 }

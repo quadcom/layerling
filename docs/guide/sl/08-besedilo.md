@@ -124,6 +124,27 @@ SVG potrebuje sklenjene obrise; risba samo iz odprtih črt ne more postati oznak
 
 **Slika (PNG ali JPG)** se izsledi v obris in predogled pokaže obris. Pod {{ui:iconTag.part}} izbereš, ali simbol postane {{ui:iconTag.part.dark}} ali {{ui:iconTag.part.light}}; na začetku je to del, ki ni ozadje. Prozorne točke nikoli ne spadajo k simbolu. SVG, ki vsebuje samo eno sliko, kot ga shrani Inkscape po uvozu bitne slike, se izsledi enako. Obris sledi točkam, zato majhna slika da hrapav rob: najbolje delujejo slike z nekaj sto točkami ali več. {{ui:iconTag.replace}} vzame del slike, ki ni njeno ozadje.
 
+## Kode QR
+
+Koda QR iz besedila ali spletnega naslova naredi vzorec, ki ga prebere kamera telefona: povezava do tvoje trgovine na tablici, ime omrežja Wi-Fi na podstavku, telefonska številka na obesku za ključe.
+
+V knjižnici oblik izberi {{ui:shape.qrCode}}. Odpre se okno; kazalec je že v polju za besedilo:
+
+- **{{ui:qrCode.text}}:** kaj koda pove. Enter ustvari kodo, Shift+Enter začne novo vrstico. Pod poljem vidiš, koliko prostora je porabljenega; črke s strešicami in drugi posebni znaki zasedejo dva bajta. Če je besedilo predolgo, ti polje to pove.
+- **{{ui:qrCode.errorCorrection}}:** L, M, Q ali H. Višjo stopnjo je še mogoče prebrati, ko je del kode umazan ali opraskan (L približno 7 %, M 15 %, Q 25 %, H 30 %), vendar za isto besedilo potrebuje več modulov, zato je vsak modul manjši. Najprej je izbrana M.
+- **{{ui:qrCode.style}}:** {{ui:qrCode.style.code}} zgradi samo kodo, visoko 4 mm. {{ui:qrCode.style.raised}} jo postavi 1 mm visoko na belo ploščo debeline 3 mm, kot sveženj dveh barv, tako da večbarvni tisk natisne kodo temno in ploščo svetlo. {{ui:qrCode.style.engraved}} kodo vreže 1 mm globoko v ploščo.
+- **{{ui:qrCode.sizeBy}}:** vnesi {{ui:qrCode.sizeBy.width}} cele kode (najprej 40 mm) ali velikost enega modula; drugo število je zapisano spodaj. Moduli, manjši od 0,8 mm, dobijo opozorilo. To je okvirno pravilo za šobo 0,4 mm, ne zagotovilo: vlogo igrajo tiskalnik, material, barve in telefon.
+- **{{ui:qrCode.quietZone}}:** čitalniki potrebujejo okoli kode prazen rob širine štirih modulov. Na plošči je rob del plošče; izklopi ga le, če plošča leži na večji svetli površini. Koda sama nima svojega roba: prostor okoli nje pusti prazen.
+- **Višine:** višina kode, na plošči višina kode ali globina gravure, in debelina plošče.
+
+Predogled pokaže kodo, kot bo zgrajena. {{ui:qrCode.ok}} jo postavi na sredino plošče.
+
+Koda je telo kot vsako drugo: premakni jo, zavrti, povečaj (širino in globino ohrani enaki, sicer se koda popači), združi jo, ali jo spremeni v luknjo in jo združi v svoj del, da jo tam vgraviraš. Povečava poveča celo kodo; vsak modul ostane kvadraten.
+
+Kartica {{ui:qrCode.title}} na vrhu njenih nastavitev vsebuje besedilo. Spremeni ga in klikni {{ui:qrCode.regenerate}}: koda se zgradi znova tam, kjer stoji, in tako široka, kot je zdaj. Popravek napak, tiho območje in izvedba ostanejo, kot so bili izbrani; za druge izbire ustvari novo kodo iz knjižnice.
+
+Kodo pred tiskom skeniraj s telefonom, in po tisku še enkrat. Temno na svetlem se bere najbolje; svetle kode na temni plošči ne prebere vsak telefon.
+
 ## Besedilo na krožnem loku
 
 Naj napis ne teče naravnost, ampak sledi robu kovanca, pokrova ali obroča? Za to je nastavitev {{ui:prop.textCurved}}.

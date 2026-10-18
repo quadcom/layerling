@@ -1,7 +1,9 @@
 "use client";
 
 import { Check, LoaderCircle, MousePointerClick, X } from "lucide-react";
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
+import { useWheelField } from "@/lib/useWheelField";
+import { wheelBaseStep, wheelNextValue } from "@/lib/wheelValueStep";
 import { displayStepFromMillimeters, displayToMillimeters, formatMeasurementNumber, lengthDisplayUnit, millimetersToDisplay, parseMeasurementInput } from "@/lib/measurementUnits";
 import { SPLIT_AXIS_DISPLAY_ORDER, splitAxisLabel, splitRotationAxes, type SplitRotation } from "@/lib/modelSplit";
 import { GuideHelpLink } from "@/components/GuideHelpLink";
@@ -65,7 +67,25 @@ export function SplitPanel({
   useEffect(() => {
     if (!positionEditing) setPositionDraft(formattedPosition);
   }, [formattedPosition, positionEditing]);
+  // The mouse wheel in the clicked field (#536); what it wrote stays as it is when the field is left.
+  const positionInputRef = useRef<HTMLInputElement>(null);
+  const positionWheelShownRef = useRef<string | null>(null);
+  useWheelField(positionInputRef, positionEditing && !busy, ({ direction, keys }) => {
+    const parsed = parseMeasurementInput(positionDraft);
+    const current = Number.isFinite(parsed) ? parsed : displayPosition;
+    const next = Math.min(displayMax, Math.max(displayMin, wheelNextValue(current, direction, wheelBaseStep(displayMin, displayMax, displayStep, unit === "in"), keys)));
+    const shown = formatMeasurementNumber(next, workspace.accuracy, displayStep);
+    positionWheelShownRef.current = shown;
+    setPositionDraft(shown);
+    applyDisplayPosition(next);
+  });
   const commitPositionDraft = () => {
+    if (positionWheelShownRef.current !== null && positionDraft === positionWheelShownRef.current) {
+      positionWheelShownRef.current = null;
+      setPositionEditing(false);
+      return;
+    }
+    positionWheelShownRef.current = null;
     const value = parseMeasurementInput(positionDraft);
     if (Number.isFinite(value)) applyDisplayPosition(value);
     setPositionEditing(false);
@@ -112,6 +132,7 @@ export function SplitPanel({
           <strong>{t("split.position")}</strong>
           <span className="split-position-value">
             <input
+              ref={positionInputRef}
               type="text"
               inputMode="decimal"
               value={positionEditing ? positionDraft : formattedPosition}
@@ -119,11 +140,15 @@ export function SplitPanel({
               aria-describedby="split-position-unit"
               disabled={busy}
               onFocus={(event) => {
+                positionWheelShownRef.current = null;
                 setPositionDraft(formattedPosition);
                 setPositionEditing(true);
                 selectWholeValue(event.currentTarget);
               }}
-              onChange={(event) => setPositionDraft(event.currentTarget.value)}
+              onChange={(event) => {
+                positionWheelShownRef.current = null;
+                setPositionDraft(event.currentTarget.value);
+              }}
               onBlur={commitPositionDraft}
               onKeyDown={(event) => {
                 if (event.key === "Enter") {
@@ -209,7 +234,24 @@ function SplitRotationControl({
   useEffect(() => {
     if (!editing) setDraft(formatted);
   }, [formatted, editing]);
+  // The mouse wheel in the clicked field (#536): a degree a notch, ten with Shift, a tenth with Ctrl.
+  const inputRef = useRef<HTMLInputElement>(null);
+  const wheelShownRef = useRef<string | null>(null);
+  useWheelField(inputRef, editing && !busy, ({ direction, keys }) => {
+    const parsed = parseMeasurementInput(draft);
+    const next = Math.min(180, Math.max(-180, wheelNextValue(Number.isFinite(parsed) ? parsed : rotation, direction, 1, keys)));
+    const shown = String(Number(next.toFixed(2)));
+    wheelShownRef.current = shown;
+    setDraft(shown);
+    onChange(next);
+  });
   const commitDraft = () => {
+    if (wheelShownRef.current !== null && draft === wheelShownRef.current) {
+      wheelShownRef.current = null;
+      setEditing(false);
+      return;
+    }
+    wheelShownRef.current = null;
     const value = parseMeasurementInput(draft);
     if (Number.isFinite(value)) onChange(value);
     setEditing(false);
@@ -221,6 +263,7 @@ function SplitRotationControl({
         <strong>{t("split.rotation", { axis: axisLabel })}</strong>
         <span className="split-position-value">
           <input
+            ref={inputRef}
             type="text"
             inputMode="decimal"
             value={editing ? draft : formatted}
@@ -228,11 +271,15 @@ function SplitRotationControl({
             aria-describedby={unitId}
             disabled={busy}
             onFocus={(event) => {
+              wheelShownRef.current = null;
               setDraft(formatted);
               setEditing(true);
               selectWholeValue(event.currentTarget);
             }}
-            onChange={(event) => setDraft(event.currentTarget.value)}
+            onChange={(event) => {
+              wheelShownRef.current = null;
+              setDraft(event.currentTarget.value);
+            }}
             onBlur={commitDraft}
             onKeyDown={(event) => {
               if (event.key === "Enter") {
