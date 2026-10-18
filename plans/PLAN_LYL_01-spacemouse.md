@@ -238,3 +238,10 @@ its PR goes up after (or stacked on) the SpaceMouse PR.
 3. **Zoom stops short in a locked view.** Cause not proven. Tried: 3DxWare is no longer told the view can't turn
    (`view.rotatable` stays true; the lock takes the turn back itself). Asked Adrian whether it was the cap or the
    wheel, and whether it still happens.
+
+**Adrian's retest (2026-10-18):** the orbit fix works (the cap stops at the top). The lock is not yet what he
+wants: Front and Right still show perspective (parallax), so they are not straight-on 2D views. Next: a view
+button also switches to the flat (orthographic) view while locked; letting go puts back the view he had.
+Built: `lockView` switches a perspective view to flat as it locks and back as it lets go; pressing O by hand while
+locked means letting go leaves the projection alone. Waits on Adrian's try. Watch: the flat view zooms by its own
+zoom range (`orthographicZoomRange`), which may be where a zoom now stops.

@@ -3343,13 +3343,26 @@ export function WorkplaneViewport({
   const [viewCubeDragging, setViewCubeDragging] = useState(false);
   // A view button holds the view to its side, for lining parts up: turning stops, for the mouse and the
   // SpaceMouse alike, until Esc, the house button or a turn on the view cube lets it go. Pan and zoom still work.
+  // It also flattens the view, so the side is seen straight on, with no perspective; letting go puts the
+  // perspective back, unless the flat view was switched by hand in the meantime.
   const [viewLocked, setViewLocked] = useState(false);
   const viewLockedRef = useRef(false);
+  const viewLockFlattenedRef = useRef(false);
   const lockView = useCallback((locked: boolean) => {
+    const wasLocked = viewLockedRef.current;
     viewLockedRef.current = locked;
     setViewLocked(locked);
     const state = threeRef.current;
-    if (state) state.controls.enableRotate = !locked;
+    if (!state) return;
+    state.controls.enableRotate = !locked;
+    if (locked && state.camera instanceof THREE.PerspectiveCamera) {
+      toggleCameraProjection(state);
+      viewLockFlattenedRef.current = true;
+    } else if (!locked && wasLocked && viewLockFlattenedRef.current && state.camera instanceof THREE.OrthographicCamera) {
+      toggleCameraProjection(state);
+    }
+    if (!locked) viewLockFlattenedRef.current = false;
+    setOrthographicView(state.camera instanceof THREE.OrthographicCamera);
   }, []);
   // Der Umschalter fuer das Drehen mit einem Finger steht nur dort, wo er
   // gebraucht wird. Anfangs falsch, damit das ausgelieferte HTML passt.
@@ -8202,6 +8215,8 @@ export function WorkplaneViewport({
       return;
     }
     toggleCameraProjection(state);
+    // Switched by hand: letting go of a held view leaves it as it is now.
+    viewLockFlattenedRef.current = false;
     // The button reads its state from the camera that is actually in the
     // scene, so the keyboard shortcut and the button can never disagree.
     setOrthographicView(state.camera instanceof THREE.OrthographicCamera);
