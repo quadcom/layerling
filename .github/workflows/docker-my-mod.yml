@@ -1,0 +1,63 @@
+name: Docker image (my-mod)
+
+# The fork's own image: every push to my-mod builds docker/Dockerfile and publishes it as
+# ghcr.io/<owner>/layerling:my-mod and :my-mod-<short sha>, for the owner's server to run.
+# amd64 only, the server's platform. Upstream's docker.yml stays as it is (it runs only for
+# a release), so upstream changes merge in cleanly. "Run workflow" builds it again by hand.
+
+on:
+  push:
+    branches: [my-mod]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  packages: write
+
+concurrency:
+  group: docker-my-mod
+  cancel-in-progress: true
+
+env:
+  IMAGE: ghcr.io/${{ github.repository }}
+
+jobs:
+  build:
+    name: Build and publish my-mod
+    runs-on: ubuntu-24.04
+    steps:
+      - name: Checkout my-mod
+        uses: actions/checkout@v7
+
+      - name: Short commit
+        id: commit
+        run: echo "short=$(git rev-parse --short=8 HEAD)" >> "$GITHUB_OUTPUT"
+
+      - name: Set up Buildx
+        uses: docker/setup-buildx-action@v4
+
+      - name: Log in to GitHub Container Registry
+        uses: docker/login-action@v4
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Build and push
+        uses: docker/build-push-action@v7
+        with:
+          context: .
+          file: docker/Dockerfile
+          platforms: linux/amd64
+          push: true
+          tags: |
+            ${{ env.IMAGE }}:my-mod
+            ${{ env.IMAGE }}:my-mod-${{ steps.commit.outputs.short }}
+          labels: |
+            org.opencontainers.image.source=https://github.com/${{ github.repository }}
+            org.opencontainers.image.title=layerling (my-mod)
+            org.opencontainers.image.description=Easy 3D CAD for 3D printing, in your browser - with SpaceMouse support through 3DxWare
+            org.opencontainers.image.licenses=AGPL-3.0-only
+            org.opencontainers.image.revision=${{ github.sha }}
+          cache-from: type=gha,scope=my-mod
+          cache-to: type=gha,scope=my-mod,mode=max

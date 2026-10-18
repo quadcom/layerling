@@ -1,7 +1,7 @@
 # PLAN_LYL_02 — Run the fork on Adrian's server
 
-**Status (2026-10-18):** planned only, nothing built. Asked for by Adrian, 2026-10-18 ("yes, plan it"), so the
-SpaceMouse (PLAN_LYL_01) works at his own HTTPS address too. Waits on his go-ahead to build.
+**Status (2026-10-18):** being built (Adrian: "yes", 2026-10-18). Step 1 done: `docker-my-mod.yml`. Asked for so the
+SpaceMouse (PLAN_LYL_01) works at his own HTTPS address too.
 
 ## Goal
 
