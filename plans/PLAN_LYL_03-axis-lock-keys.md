@@ -1,6 +1,6 @@
 # PLAN_LYL_03 — Lock a drag to one axis with the X, Y and Z keys
 
-**Status (2026-10-18):** **built and tested on branch `axis-lock`**, cut from `main` (upstream 1.91.0); 3 commits,
+**Status (2026-10-18):** **merged into `my-mod` and running on Adrian's server** (Adrian: "Merge both up to my mod and get my local instance updated"; merge `896870a5`, pushed, image built, stack recreated; the merged sketch checked in headless Chromium: X lock plus wheel together). Before that: **built and tested on branch `axis-lock`**, cut from `main` (upstream 1.91.0); 3 commits,
 not merged into `my-mod`, not pushed. Type check clean; unit tests pass (8 new in `tests/unit/axisLock.test.ts`)
 apart from the known `useRememberedFlag` failure under Node 26. Tried in headless Chromium on the dev server:
 sketch line with X (level, 0°) and Y (upright), dashed guide and badge, lock gone after the click, Z ignored in
@@ -10,7 +10,6 @@ moves along X only.
 
 **Not done / open:**
 - Adrian to try it himself, mostly the tape measure on a real part (corner to plate) and in Firefox.
-- Merge into `my-mod` - Adrian's OK (see "Both plans together" below).
 - Upstream PR to henmedia/layerling - Adrian's call. The branch is PR-ready: no plan file, English text in every
   language file (upstream may want translations), What's New in `docs/whatsNew-unreleased.json`.
 - Reference points (the tape's own markers) do not catch while a lock is on; corners, edges and tape points do.
@@ -18,7 +17,7 @@ moves along X only.
   headless test browser.
 
 **Both plans together:** `axis-lock` and `wheel-steps` both change `SketchWorkspace.tsx`, the sketch guide page and
-`docs/whatsNew-unreleased.json`, so merging the second one will stop on conflicts there (a trial merge, 2026-10-18).
+`docs/whatsNew-unreleased.json`, so merging the second one stopped on conflicts there; resolved in merge `896870a5` (the lock applies first, the wheel's added length on top).
 Both are built on upstream 1.91.0 while `my-mod` is on 1.89.0 with the SpaceMouse work, so merging either into
 `my-mod` also brings the upstream update in. `npm install` is needed after (1.91 adds `qrcode-generator`).
 

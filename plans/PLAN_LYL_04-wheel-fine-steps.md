@@ -1,6 +1,6 @@
 # PLAN_LYL_04 — Mouse wheel for fine steps: in number fields and while dragging a handle
 
-**Status (2026-10-18):** **built and tested on branch `wheel-steps`** (Adrian: "Build 3 and 4, seperate
+**Status (2026-10-18):** **merged into `my-mod` and running on Adrian's server** (Adrian: "Merge both up to my mod and get my local instance updated"; merge `896870a5`, pushed, image built, stack recreated; the merged sketch checked in headless Chromium: X lock plus wheel together). Before that: **built and tested on branch `wheel-steps`** (Adrian: "Build 3 and 4, seperate
 branches"), cut from `main` (upstream 1.91.0); 5 commits, not merged into `my-mod`, not pushed. Type check clean;
 unit tests pass apart from the known `useRememberedFlag` failure under Node 26 (`guide.test.ts` timed out once under
 load and passes alone); `tests/unit/wheelValueStep.test.ts` grew from 5 to 13 tests. Tried in headless Chromium on
@@ -25,11 +25,10 @@ New entry.
 
 **Not done / open:**
 - Adrian to try it himself, especially the Ctrl/Alt steps, the 3D turn handle and the on-screen size boxes.
-- Merge into `my-mod` - Adrian's OK (see "Both plans together" below).
 - Upstream PR - Adrian's call. English text only in every language file for now.
 
 **Both plans together:** `axis-lock` and `wheel-steps` both change `SketchWorkspace.tsx`, the sketch guide page and
-`docs/whatsNew-unreleased.json`, so merging the second one will stop on conflicts there (a trial merge, 2026-10-18).
+`docs/whatsNew-unreleased.json`, so merging the second one stopped on conflicts there; resolved in merge `896870a5` (the lock applies first, the wheel's added length on top).
 Both are built on upstream 1.91.0 while `my-mod` is on 1.89.0 with the SpaceMouse work, so merging either into
 `my-mod` also brings the upstream update in. `npm install` is needed after (1.91 adds `qrcode-generator`).
 
