@@ -7,6 +7,8 @@ import { AlertTriangle, Check, LoaderCircle, X } from "lucide-react";
 import { GuideHelpLink } from "@/components/GuideHelpLink";
 import { numberLocale, t } from "@/lib/i18n";
 import { simplifyTrianglePositions, type SimplifiedMesh } from "@/lib/meshSimplify";
+import { createNavlibCameraModel } from "@/lib/navlibCamera";
+import { registerSpaceMouseView } from "@/lib/spaceMouseConnection";
 import { displayShapeName } from "@/lib/shapeCatalog";
 import { useLanguage } from "@/lib/useLanguage";
 import { useMovablePanel, type MovablePanelOptions } from "@/lib/useMovablePanel";
@@ -58,7 +60,8 @@ function setSideGeometry(side: THREE.Group, positions: ArrayLike<number> | null)
  * exactly what there is to compare. Nothing changes until "Simplify".
  *
  * The mouse works as on the workplane: the right button turns, the middle one
- * (or Ctrl/Cmd with the left) moves, the wheel zooms.
+ * (or Ctrl/Cmd with the left) moves, the wheel zooms. While the panel is open a
+ * SpaceMouse turns its camera too, both halves at once, instead of the workplane's.
  */
 export function MeshSimplifyPanel({
   shape,
@@ -212,6 +215,38 @@ export function MeshSimplifyPanel({
     observer.observe(canvas);
     resize();
 
+    // The pointer counts in the half it is over, as each half is a view of its own.
+    let pointer: { x: number; y: number } | null = null;
+    const onPointerMove = (event: PointerEvent) => {
+      const rect = canvas.getBoundingClientRect();
+      const half = Math.max(1, rect.width / 2);
+      const across = (event.clientX - rect.left) % half;
+      pointer = { x: (across / half) * 2 - 1, y: 1 - ((event.clientY - rect.top) / Math.max(1, rect.height)) * 2 };
+    };
+    const onPointerLeave = () => { pointer = null; };
+    canvas.addEventListener("pointermove", onPointerMove);
+    canvas.addEventListener("pointerleave", onPointerLeave);
+    const raycaster = new THREE.Raycaster();
+    const unregisterSpaceMouse = registerSpaceMouseView(createNavlibCameraModel({
+      camera: () => camera,
+      target: () => controls.target,
+      zoomRange: () => ({ min: controls.minZoom, max: controls.maxZoom }),
+      minDistance: () => Math.max(controls.minDistance, camera.near * 2),
+      modelBox: () => {
+        const box = new THREE.Box3().setFromObject(state.sides[0]);
+        return box.isEmpty() ? null : box;
+      },
+      selectionBox: () => null,
+      hitTest: (origin, direction) => {
+        raycaster.set(origin, direction);
+        return raycaster.intersectObject(state.sides[0], true)[0]?.point ?? null;
+      },
+      pointer: () => pointer,
+      changed: () => { state.needsRender = true; },
+      showPivot: () => undefined,
+      moving: () => { state.needsRender = true; },
+    }));
+
     let frame = 0;
     const draw = () => {
       frame = window.requestAnimationFrame(draw);
@@ -231,6 +266,9 @@ export function MeshSimplifyPanel({
 
     return () => {
       window.cancelAnimationFrame(frame);
+      unregisterSpaceMouse();
+      canvas.removeEventListener("pointermove", onPointerMove);
+      canvas.removeEventListener("pointerleave", onPointerLeave);
       observer.disconnect();
       canvas.removeEventListener("pointerdown", onPointerDown, { capture: true });
       controls.dispose();

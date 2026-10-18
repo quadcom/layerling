@@ -172,3 +172,11 @@ route depends on what it shows.
   stays at its depth (so the camera comes closer); near it, it moves on to the surface ahead (hit test, as the
   wheel does); right at a surface the camera stops at the view's closest distance. Two unit tests added.
   **Retried by Adrian: success.**
+
+## Simplify Mesh window (Adrian, 2026-10-18)
+
+- Found by Adrian on the server: the cap did nothing in Simplify Mesh's side-by-side compare. That panel draws both
+  halves with one camera of its own. Fixed: while it is open it registers that camera with 3DxWare (the last view
+  registered is moved), so the cap turns both halves together; closing it gives the cap back to the workplane.
+  Hit tests and model box use the original mesh; no pivot marker there. Other renderers checked: the revolve
+  preview is a still picture with no controls, and `myShapeThumbnail` draws icons off-screen, so neither needs it.
